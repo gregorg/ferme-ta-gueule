@@ -1,6 +1,8 @@
 # ferme-ta-gueule
 Logger live d'erreurs provenant d'un cluster ElasticSearch
 
+![Ferme_ta_gueule_by_Katikut](http://fc09.deviantart.net/fs48/f/2009/226/3/f/Ferme_ta_gueule_by_Katikut.jpg)
+
 ## Comment l'installer
 
 ```
