@@ -85,6 +85,7 @@ if __name__ == '__main__':
     parser.add_argument("--fatal", help="Only fatals", action="store_true")
     parser.add_argument("--notice", help="Only notices", action="store_true")
     parser.add_argument("--grep", help="grep pattern. Use /pattern/ for regex search.", action="store")
+    parser.add_argument("--id", help="get specific id in ES index", action="store")
     args = parser.parse_args()
 
     es = elasticsearch.Elasticsearch(
@@ -92,6 +93,23 @@ if __name__ == '__main__':
         use_ssl=True,
         verify_certs=False
     )
+
+    if args.id:
+        tries = 1
+        while True:
+            try:
+                doc = es.get(index=INDEX, id=args.id)
+                print "RESULT for ES#%s (%d tries) :" % (args.id, tries)
+                for k, v in doc['_source'].items():
+                    print "%-14s: %s"%(k, v)
+                break
+            except elasticsearch.exceptions.NotFoundError:
+                if tries >= 4:
+                    print "Not Found."
+                    sys.exit(42)
+                else:
+                    tries += 1
+        sys.exit(0)
 
     logging.getLogger('elasticsearch').setLevel(logging.WARNING)
     loghandler = logging.StreamHandler()
