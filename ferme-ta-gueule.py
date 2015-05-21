@@ -21,6 +21,14 @@ logging.captureWarnings(True)
 level = None
 INDEX = 'logs'
 url = 'https://elasticsearch.easyflirt.com:443'
+LEVELSMAP = {
+    'WARN':     logging.WARNING,
+    'warning':  logging.WARNING,
+    'err':      logging.ERROR,
+    'alert':    logging.ERROR,
+    'ERROR':    logging.ERROR,
+    'FATAL':    logging.CRITICAL,
+}
 
 class ColoredFormatter(logging.Formatter): # {{{
     COLORS = {
@@ -77,6 +85,7 @@ if __name__ == '__main__':
     parser.add_argument("--error", help="Only errors", action="store_true")
     parser.add_argument("--fatal", help="Only fatals", action="store_true")
     parser.add_argument("--notice", help="Only notices", action="store_true")
+    parser.add_argument("--grep", help="grep pattern. Use /pattern/ for regex search.", action="store")
     args = parser.parse_args()
 
     es = elasticsearch.Elasticsearch(
@@ -97,15 +106,38 @@ if __name__ == '__main__':
 
     logs.info("%d logs in ElasticSearch index", es.count(INDEX)['count'])
 
+    if args.notice:
+        level = " ".join([k for k, v in LEVELSMAP.items() if v == logging.DEBUG])
+    elif args.error:
+        level = " ".join([k for k, v in LEVELSMAP.items() if v == logging.ERROR])
+    elif args.fatal:
+        level = " ".join([k for k, v in LEVELSMAP.items() if v == logging.CRITICAL])
+
+
     now = int(time.time()) - 3600*2
     lasts = []
     stats = {'levels': {}}
     progress = False
-    #level = 'FATAL'
     query = {"filter": {"range": {"timestamp": {"gte": now}}}}
     if level:
-        query['query'] = {'match': {'level': level}}
-        level -= 60
+        try:
+            query['query']['bool']['must'].append({'match': {'level': {'query': level, 'operator' : 'or'}}})
+        except KeyError:
+            query['query'] = {'bool': {'must': [{'match': {'level': {'query': level, 'operator' : 'or'}}}]}}
+        now -= 60
+
+    if args.grep:
+        grep = args.grep
+        if not grep.startswith('/') and not grep.startswith('*') and not grep.endswith('*'):
+            grep = '*' + grep + '*'
+            
+        try:
+            query['query']['bool']['must'].append({'query_string': {'fields': ['msg'], 'query': grep}})
+        except KeyError:
+            query['query'] = {'bool': {'must': [{'query_string': {'fields': ['msg'], 'query': grep}}]}}
+        now -= 60
+
+    logs.debug("ES query: %s"%query)
 
     try:
         while True:
@@ -144,22 +176,12 @@ if __name__ == '__main__':
                             logmsg = logmsg[:200]
 
                         msg = "[%s] <%s> %s >> %s"%(prettydate, ids['_source']['level'], ids['_source']['program'], logmsg)
-                        lvl = logging.DEBUG
-                        if loglvl in ('WARN', 'warning'):
-                            lvl = logging.WARNING
-                        elif loglvl in ('err', 'alert', 'ERROR'):
-                            lvl = logging.ERROR
-                        elif loglvl in ('FATAL', 'alert'):
-                            lvl = logging.CRITICAL
 
-                        if args.fatal and loglvl == 'FATAL':
-                            logs.log(lvl, msg)
-                        elif args.error and lvl == logging.ERROR:
-                            logs.log(lvl, msg)
-                        elif args.notice and lvl == logging.DEBUG:
-                            logs.log(lvl, msg)
-                        elif not args.fatal and not args.error and not args.notice:
-                            logs.log(lvl, msg)
+                        try:
+                            logs.log(LEVELSMAP[loglvl], msg)
+                        except KeyError:
+                            logs.log(logging.DEBUG, msg)
+                            
 
 
                         try:
