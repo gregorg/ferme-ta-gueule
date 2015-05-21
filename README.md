@@ -6,6 +6,7 @@ Logger live d'erreurs provenant d'un cluster ElasticSearch
 ## Comment l'installer
 
 ```
+apt-get install python-setuptools python-pip
 git clone https://github.com/gregorg/ferme-ta-gueule.git
 cd ferme-ta-gueule
 python setup.py install --user

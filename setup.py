@@ -11,7 +11,7 @@ setup(
     author_email="greg@easyflirt.com",
     maintainer="Easyflirt development community",
     maintainer_email="greg@easyflirt.com",
-    install_requires=["elasticsearch","termcolor"],
+    install_requires=["elasticsearch","termcolor","argparse"],
     description="Tail de logs d'erreurs",
     packages=[],
     scripts=["ferme-ta-gueule.py"]
