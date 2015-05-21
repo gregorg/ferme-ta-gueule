@@ -29,38 +29,33 @@ LEVELSMAP = {
     'ERROR':    logging.ERROR,
     'FATAL':    logging.CRITICAL,
 }
+COLORS = {
+    'DEBUG': 'white',
+    'INFO': 'cyan',
+    'WARNING': 'yellow',
+    'ERROR': 'white',
+    'CRITICAL': 'yellow',
+}
+ON_COLORS = {
+    'CRITICAL': 'on_red',
+}
+COLORS_ATTRS = {
+    'CRITICAL': ('bold',),
+    'WARNING': ('bold',),
+    'ERROR': ('bold',),
+    'DEBUG': ('dark',),
+}
 
 class ColoredFormatter(logging.Formatter): # {{{
-    COLORS = {
-        'WARNING': 'yellow',
-        'INFO': 'cyan',
-        'CRITICAL': 'white',
-        'ERROR': 'red'
-    }
-    ON_COLORS = {
-        'CRITICAL': 'on_red',
-        'ERROR': 'on_yellow'
-    }
-    COLORS_ATTRS = {
-        'CRITICAL': ('bold',),
-    }
 
-    def __init__(self, use_color = True):
+    def __init__(self):
         # main formatter:
-        logformat = u'%(asctime)s %(levelname)-8s %(message)s'
+        logformat = '%(message)s'
         logdatefmt = '%H:%M:%S %d/%m/%Y'
         logging.Formatter.__init__(self, logformat, logdatefmt)
 
-        self.use_color = use_color
-        if self.use_color and not 'termcolor' in sys.modules:
-            try:
-                import termcolor
-            except:
-                self.use_color = False
-                logging.debug("You could activate colors with 'termcolor' module")
-
     def format(self, record):
-        if self.use_color and record.levelname in self.COLORS:
+        if record.levelname in self.COLORS:
             color = self.COLORS[record.levelname]
             try:
                 on_color = self.ON_COLORS[record.levelname]
@@ -75,9 +70,13 @@ class ColoredFormatter(logging.Formatter): # {{{
 
 # }}}
 
-def getTerminalSize():
+
+def getTerminalSize(): # {{{
     rows, columns = os.popen('stty size', 'r').read().split()
     return (rows, columns)
+# }}}
+
+
 
 if __name__ == '__main__':
     parser = argparse.ArgumentParser()
@@ -96,7 +95,7 @@ if __name__ == '__main__':
 
     logging.getLogger('elasticsearch').setLevel(logging.WARNING)
     loghandler = logging.StreamHandler()
-    loghandler.setFormatter(ColoredFormatter(True))
+    #loghandler.setFormatter(ColoredFormatter())
     logs = logging.getLogger('logs')
     while len(logs.handlers) > 0:
         logs.removeHandler(logs.handlers[0])
@@ -109,7 +108,7 @@ if __name__ == '__main__':
     if args.notice:
         level = " ".join([k for k, v in LEVELSMAP.items() if v == logging.DEBUG])
     elif args.error:
-        level = " ".join([k for k, v in LEVELSMAP.items() if v == logging.ERROR])
+        level = " ".join([k for k, v in LEVELSMAP.items() if v >= logging.ERROR])
     elif args.fatal:
         level = " ".join([k for k, v in LEVELSMAP.items() if v == logging.CRITICAL])
 
@@ -117,6 +116,7 @@ if __name__ == '__main__':
     now = int(time.time()) - 3600*2
     lasts = []
     stats = {'levels': {}}
+    laststats = time.time()
     progress = False
     query = {"filter": {"range": {"timestamp": {"gte": now}}}}
     if level:
@@ -154,11 +154,13 @@ if __name__ == '__main__':
                     #sys.stdout.write('.')
                     #sys.stdout.flush()
                 else:
-                    idx_count = es.count(INDEX)['count']
-                    statsmsg = 'STATS: %d logs, '%idx_count
-                    for l in stats['levels'].keys():
-                        statsmsg += "%s=%d, "%(l, stats['levels'][l])
-                    logs.info(statsmsg[:-2])
+                    if time.time() - laststats >= 60:
+                        laststats = time.time()
+                        idx_count = es.count(INDEX)['count']
+                        statsmsg = 'STATS: %d logs, '%idx_count
+                        for l in stats['levels'].keys():
+                            statsmsg += "%s=%d, "%(l, stats['levels'][l])
+                        logs.info(statsmsg[:-2])
                 progress = True
             else:
                 if progress:
@@ -166,21 +168,36 @@ if __name__ == '__main__':
                     #sys.stdout.write("\n")
                 for ids in s['hits']['hits']:
                     newnow = int(ids['_source']['timestamp'])
+                    _id = ids['_id']
 
-                    if not ids['_id'] in lasts:
+                    if not _id in lasts:
                         prettydate = datetime.datetime.fromtimestamp(newnow).strftime('%d-%m-%Y %H:%M:%S')
                         loglvl = ids['_source']['level']
+                        try:
+                            lvl = LEVELSMAP[loglvl]
+                        except KeyError:
+                            lvl = logging.DEBUG
 
                         logmsg = ids['_source']['msg']
                         if not args.full:
                             logmsg = logmsg[:200]
 
-                        msg = "[%s] <%s> %s >> %s"%(prettydate, ids['_source']['level'], ids['_source']['program'], logmsg)
-
+                        color = COLORS[logging.getLevelName(lvl)]
                         try:
-                            logs.log(LEVELSMAP[loglvl], msg)
+                            on_color = ON_COLORS[logging.getLevelName(lvl)]
                         except KeyError:
-                            logs.log(logging.DEBUG, msg)
+                            on_color = None
+                        try:
+                            color_attr = COLORS_ATTRS[logging.getLevelName(lvl)]
+                        except KeyError:
+                            color_attr = None
+                        #record.msg = u'%s'%termcolor.colored(record.msg, color, on_color, color_attr)
+                        msg = termcolor.colored(prettydate, 'white', 'on_blue', ('bold',))
+                        msg += termcolor.colored("<%s>"%ids['_source']['level'], color, on_color, color_attr)
+                        msg += "(%s) %s >> "%(_id, ids['_source']['program'])
+                        msg += termcolor.colored(logmsg, color, on_color, color_attr)
+
+                        logs.log(lvl, msg)
                             
 
 
@@ -190,10 +207,10 @@ if __name__ == '__main__':
                             stats['levels'][ids['_source']['level']] = 1
 
                     if newnow == now:
-                        if not ids['_id'] in lasts:
-                            lasts.append(ids['_id'])
+                        if not _id in lasts:
+                            lasts.append(_id)
                     else:
-                        lasts = [ids['_id']]
+                        lasts = [_id]
 
                     now = newnow
             time.sleep(0.2)
