@@ -13,7 +13,7 @@ then
 	$sudo apt-get install python-setuptools python-pip
 elif which brew >/dev/null
 then
-	pysetupargs=
+	#pysetupargs=
 	if ! which python >/dev/null
 	then
 		$sudo brew install python
@@ -25,5 +25,5 @@ set -e
 cd /tmp
 git clone https://github.com/gregorg/ferme-ta-gueule.git
 cd ferme-ta-gueule
-python setup.py install $pysetupargs
+python setup.py install $pysetupargs || { ret=$?; echo ; echo; echo "FAILED: retry with 'cd /tmp/ferme-ta-gueule && python setup.py install $pysetupargs'"; exit $ret; }
 
