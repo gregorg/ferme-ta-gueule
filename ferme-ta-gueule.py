@@ -20,6 +20,7 @@ logging.captureWarnings(True)
 
 level = None
 INDEX = 'logs'
+MAX_PACKETS = 100
 url = 'https://elasticsearch.easyflirt.com:443'
 LEVELSMAP = {
     'WARN':     logging.WARNING,
@@ -84,6 +85,8 @@ if __name__ == '__main__':
     parser.add_argument("--error", help="Only errors", action="store_true")
     parser.add_argument("--fatal", help="Only fatals", action="store_true")
     parser.add_argument("--notice", help="Only notices", action="store_true")
+    parser.add_argument("--far", help="Starts from far logs", action="store_true")
+    parser.add_argument("--progress", help="Progress bar", action="store_true")
     parser.add_argument("--grep", help="grep pattern. Use /pattern/ for regex search.", action="store")
     parser.add_argument("--id", help="get specific id in ES index", action="store")
     args = parser.parse_args()
@@ -131,11 +134,15 @@ if __name__ == '__main__':
         level = " ".join([k for k, v in LEVELSMAP.items() if v == logging.CRITICAL])
 
 
-    now = int(time.time()) - 3600*2
+    if args.far:
+        now = int(time.time()) - 3600*2 + 60
+    else:
+        now = int(time.time()) - 3600 - 60
     lasts = []
     stats = {'levels': {}}
     laststats = time.time()
     progress = False
+    maxp = MAX_PACKETS
     query = {"filter": {"range": {"timestamp": {"gte": now}}}}
     if level:
         try:
@@ -159,18 +166,25 @@ if __name__ == '__main__':
 
     try:
         while True:
+            #sys.stdout.write('#')
+            #sys.stdout.flush()
             query['filter']['range']['timestamp']['gte'] = now
             try:
-                s = es.search(INDEX, body=query, sort="timestamp:asc", size=100)
+                s = es.search(INDEX, body=query, sort="timestamp:asc", size=maxp)
             except elasticsearch.exceptions.ConnectionError:
+                logs.warning("ES connection error", exc_info=True)
+                time.sleep(1)
+                continue
+            except elasticsearch.exceptions.TransportError:
+                logs.critical("Elasticsearch is unreachable, will retry in 1s ...")
                 time.sleep(1)
                 continue
 
             if s['hits']['total'] <= len(lasts):
                 if progress:
-                    pass
-                    #sys.stdout.write('.')
-                    #sys.stdout.flush()
+                    if args.progress:
+                        sys.stdout.write('.')
+                        sys.stdout.flush()
                 else:
                     if time.time() - laststats >= 60:
                         laststats = time.time()
@@ -183,7 +197,8 @@ if __name__ == '__main__':
             else:
                 if progress:
                     progress = False
-                    #sys.stdout.write("\n")
+                    if args.progress:
+                        sys.stdout.write("\n")
                 for ids in s['hits']['hits']:
                     newnow = int(ids['_source']['timestamp'])
                     _id = ids['_id']
@@ -227,7 +242,11 @@ if __name__ == '__main__':
                     if newnow == now:
                         if not _id in lasts:
                             lasts.append(_id)
+                        # Max packets reached
+                        if len(s['hits']['hits']) == maxp:
+                            maxp += MAX_PACKETS
                     else:
+                        maxp = MAX_PACKETS
                         lasts = [_id]
 
                     now = newnow
