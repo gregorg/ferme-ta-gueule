@@ -90,7 +90,7 @@ if __name__ == '__main__':
     parser.add_argument("--error", help="Only errors", action="store_true")
     parser.add_argument("--fatal", help="Only fatals", action="store_true")
     parser.add_argument("--notice", help="Only notices", action="store_true")
-    parser.add_argument("--far", help="Starts from far logs", action="store_true")
+    parser.add_argument("--from", help="Starts from N hours ago", action="store", type=int, dest="_from")
     parser.add_argument("--progress", help="Progress bar", action="store_true")
     parser.add_argument("--grep", help="grep pattern. Use /pattern/ for regex search.", action="store")
     parser.add_argument("--exclude", help="grep pattern. Use /pattern/ for regex exclusion.", action="store")
@@ -140,8 +140,8 @@ if __name__ == '__main__':
         level = " ".join([k for k, v in LEVELSMAP.items() if v == logging.CRITICAL])
 
 
-    if args.far:
-        now = int(time.time()) - 3600*2 + 60
+    if args._from:
+        now = int(time.time()) - 3600 * args._from
     else:
         now = int(time.time()) - 3600 - 60
     lasts = []
