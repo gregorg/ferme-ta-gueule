@@ -81,7 +81,7 @@ def getTerminalSize(): # {{{
 def pattern_to_es(pattern):
     if not pattern.startswith('/') and not pattern.startswith('*') and not pattern.endswith('*'):
         pattern = '*' + pattern + '*'
-    return pattern
+    return pattern.replace(" ", ' AND ')
 
 
 if __name__ == '__main__':
