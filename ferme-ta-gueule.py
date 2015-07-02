@@ -78,6 +78,11 @@ def getTerminalSize(): # {{{
 # }}}
 
 
+def pattern_to_es(pattern):
+    if not pattern.startswith('/') and not pattern.startswith('*') and not pattern.endswith('*'):
+        pattern = '*' + pattern + '*'
+    return pattern
+
 
 if __name__ == '__main__':
     parser = argparse.ArgumentParser()
@@ -88,6 +93,7 @@ if __name__ == '__main__':
     parser.add_argument("--far", help="Starts from far logs", action="store_true")
     parser.add_argument("--progress", help="Progress bar", action="store_true")
     parser.add_argument("--grep", help="grep pattern. Use /pattern/ for regex search.", action="store")
+    parser.add_argument("--exclude", help="grep pattern. Use /pattern/ for regex exclusion.", action="store")
     parser.add_argument("--id", help="get specific id in ES index", action="store")
     args = parser.parse_args()
 
@@ -152,14 +158,21 @@ if __name__ == '__main__':
         now -= 60
 
     if args.grep:
-        grep = args.grep
-        if not grep.startswith('/') and not grep.startswith('*') and not grep.endswith('*'):
-            grep = '*' + grep + '*'
+        grep = pattern_to_es(args.grep)
             
         try:
             query['query']['bool']['must'].append({'query_string': {'fields': ['msg'], 'query': grep}})
         except KeyError:
             query['query'] = {'bool': {'must': [{'query_string': {'fields': ['msg'], 'query': grep}}]}}
+        now -= 60
+
+    if args.exclude:
+        exclude = pattern_to_es(args.exclude)
+            
+        try:
+            query['query']['bool']['must_not'].append({'query_string': {'fields': ['msg'], 'query': exclude}})
+        except KeyError:
+            query['query'] = {'bool': {'must_not': [{'query_string': {'fields': ['msg'], 'query': exclude}}]}}
         now -= 60
 
     logs.debug("ES query: %s"%query)
