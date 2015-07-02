@@ -218,8 +218,8 @@ if __name__ == '__main__':
 
                     if not _id in lasts:
                         prettydate = datetime.datetime.fromtimestamp(newnow).strftime('%d-%m-%Y %H:%M:%S')
-                        loglvl = ids['_source']['level']
                         try:
+                            loglvl = ids['_source']['level']
                             lvl = LEVELSMAP[loglvl]
                         except KeyError:
                             lvl = logging.DEBUG
@@ -239,7 +239,9 @@ if __name__ == '__main__':
                             color_attr = None
                         #record.msg = u'%s'%termcolor.colored(record.msg, color, on_color, color_attr)
                         msg = termcolor.colored(prettydate, 'white', 'on_blue', ('bold',))
-                        msg += termcolor.colored("<%s>"%ids['_source']['level'], color, on_color, color_attr)
+                        try:
+                            msg += termcolor.colored("<%s>"%ids['_source']['level'], color, on_color, color_attr)
+                        except KeyError: pass
                         msg += "(%s) %s >> "%(_id, ids['_source']['program'])
                         msg += termcolor.colored(logmsg, color, on_color, color_attr)
 
@@ -250,7 +252,9 @@ if __name__ == '__main__':
                         try:
                             stats['levels'][ids['_source']['level']] += 1
                         except KeyError:
-                            stats['levels'][ids['_source']['level']] = 1
+                            try:
+                                stats['levels'][ids['_source']['level']] = 1
+                            except KeyError: pass
 
                     if newnow == now:
                         if not _id in lasts:
