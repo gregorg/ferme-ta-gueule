@@ -95,6 +95,7 @@ if __name__ == '__main__':
     parser.add_argument("--grep", help="grep pattern. Use /pattern/ for regex search.", action="store")
     parser.add_argument("--exclude", help="grep pattern. Use /pattern/ for regex exclusion.", action="store")
     parser.add_argument("--id", help="get specific id in ES index", action="store")
+    parser.add_argument("--interval", help="interval between queries, default 1s", action="store", type=float, default=1)
     args = parser.parse_args()
 
     es = elasticsearch.Elasticsearch(
@@ -267,5 +268,5 @@ if __name__ == '__main__':
                         lasts = [_id]
 
                     now = newnow
-            time.sleep(0.2)
+            time.sleep(args.interval)
     except KeyboardInterrupt: pass
