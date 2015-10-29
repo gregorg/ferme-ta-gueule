@@ -96,11 +96,12 @@ if __name__ == '__main__':
     parser.add_argument("--exclude", help="grep pattern. Use /pattern/ for regex exclusion.", action="store")
     parser.add_argument("--id", help="get specific id in ES index", action="store")
     parser.add_argument("--interval", help="interval between queries, default 1s", action="store", type=float, default=1)
+    parser.add_argument("--url", help="Use another ES", action="store", default=url)
     args = parser.parse_args()
 
     es = elasticsearch.Elasticsearch(
-        url, 
-        use_ssl=True,
+        args.url, 
+        use_ssl=("https" in args.url),
         verify_certs=False
     )
 
@@ -131,7 +132,7 @@ if __name__ == '__main__':
     logs.addHandler(loghandler)
     logs.setLevel(logging.DEBUG)
 
-    logs.info("%d logs in ElasticSearch index", es.count(INDEX)['count'])
+    logs.info("[%s] %d logs in ElasticSearch index", args.url, es.count(INDEX)['count'])
 
     if args.notice:
         level = " ".join([k for k, v in LEVELSMAP.items() if v == logging.DEBUG])
