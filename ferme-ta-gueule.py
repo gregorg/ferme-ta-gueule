@@ -123,7 +123,7 @@ if __name__ == '__main__':
         sys.exit(0)
 
     logging.getLogger('elasticsearch').setLevel(logging.WARNING)
-    loghandler = logging.StreamHandler()
+    loghandler = logging.StreamHandler(sys.stdout)
     #loghandler.setFormatter(ColoredFormatter())
     logs = logging.getLogger('logs')
     while len(logs.handlers) > 0:
