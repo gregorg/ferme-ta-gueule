@@ -94,6 +94,7 @@ if __name__ == '__main__':
     parser.add_argument("--progress", help="Progress bar", action="store_true")
     parser.add_argument("--grep", help="grep pattern. Use /pattern/ for regex search.", action="store")
     parser.add_argument("--exclude", help="grep pattern. Use /pattern/ for regex exclusion.", action="store")
+    parser.add_argument("--program", help="grep program.", action="store")
     parser.add_argument("--id", help="get specific id in ES index", action="store")
     parser.add_argument("--interval", help="interval between queries, default 1s", action="store", type=float, default=1)
     parser.add_argument("--url", help="Use another ES", action="store", default=url)
@@ -169,12 +170,18 @@ if __name__ == '__main__':
         now -= 60
 
     if args.exclude:
-        exclude = pattern_to_es(args.exclude)
-            
         try:
-            query['query']['bool']['must_not'].append({'query_string': {'fields': ['msg'], 'query': exclude}})
+            query['query']['bool']['must_not'].append({'query_string': {'fields': ['msg'], 'query': pattern_to_es(args.exclude)}})
         except KeyError:
-            query['query'] = {'bool': {'must_not': [{'query_string': {'fields': ['msg'], 'query': exclude}}]}}
+            query['query'] = {'bool': {'must_not': [{'query_string': {'fields': ['msg'], 'query': pattern_to_es(args.exclude)}}]}}
+        query['query']['bool']['must_not'].append({'query_string': {'fields': ['program'], 'query': args.exclude}})
+        now -= 60
+
+    if args.program:
+        try:
+            query['query']['bool']['must'].append({'query_string': {'fields': ['program'], 'query': args.program}})
+        except KeyError:
+            query['query'] = {'bool': {'must': [{'query_string': {'fields': ['program'], 'query': args.program}}]}}
         now -= 60
 
     logs.debug("ES query: %s"%query)
@@ -244,6 +251,11 @@ if __name__ == '__main__':
                         try:
                             msg += termcolor.colored("<%s>"%ids['_source']['level'], color, on_color, color_attr)
                         except KeyError: pass
+                        try:
+                            host = ids['_source']['host']
+                        except:
+                            host = 'local'
+                        msg += termcolor.colored("[%s]"%host, 'blue', None, ('bold',))
                         msg += "(%s) %s >> "%(_id, ids['_source']['program'])
                         msg += termcolor.colored(logmsg, color, on_color, color_attr)
 
