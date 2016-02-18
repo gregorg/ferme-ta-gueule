@@ -19,7 +19,7 @@ import logging
 logging.captureWarnings(True)
 
 level = None
-INDEX = 'logs'
+es_index = 'logs'
 MAX_PACKETS = 100
 url = 'https://elasticsearch.easyflirt.com:443'
 LEVELSMAP = {
@@ -95,6 +95,7 @@ if __name__ == '__main__':
     parser.add_argument("--grep", help="grep pattern. Use /pattern/ for regex search.", action="store")
     parser.add_argument("--exclude", help="grep pattern. Use /pattern/ for regex exclusion.", action="store")
     parser.add_argument("--program", help="grep program.", action="store")
+    parser.add_argument("--index", help="specify elasticsearch index, default %s"%es_index, action="store")
     parser.add_argument("--id", help="get specific id in ES index", action="store")
     parser.add_argument("--interval", help="interval between queries, default 1s", action="store", type=float, default=1)
     parser.add_argument("--url", help="Use another ES", action="store", default=url)
@@ -106,11 +107,14 @@ if __name__ == '__main__':
         verify_certs=False
     )
 
+    if args.index:
+        es_index = args.index
+
     if args.id:
         tries = 1
         while True:
             try:
-                doc = es.get(index=INDEX, id=args.id)
+                doc = es.get(index=es_index, id=args.id)
                 print "RESULT for ES#%s (%d tries) :" % (args.id, tries)
                 for k, v in doc['_source'].items():
                     print "%-14s: %s"%(k, v)
@@ -133,7 +137,7 @@ if __name__ == '__main__':
     logs.addHandler(loghandler)
     logs.setLevel(logging.DEBUG)
 
-    logs.info("[%s] %d logs in ElasticSearch index", args.url, es.count(INDEX)['count'])
+    logs.info("[%s] %d logs in ElasticSearch index", args.url, es.count(es_index)['count'])
 
     if args.notice:
         level = " ".join([k for k, v in LEVELSMAP.items() if v == logging.DEBUG])
@@ -192,7 +196,7 @@ if __name__ == '__main__':
             #sys.stdout.flush()
             query['filter']['range']['timestamp']['gte'] = now
             try:
-                s = es.search(INDEX, body=query, sort="timestamp:asc", size=maxp)
+                s = es.search(es_index, body=query, sort="timestamp:asc", size=maxp)
             except elasticsearch.exceptions.ConnectionError:
                 logs.warning("ES connection error", exc_info=True)
                 time.sleep(1)
@@ -210,7 +214,7 @@ if __name__ == '__main__':
                 else:
                     if time.time() - laststats >= 60:
                         laststats = time.time()
-                        idx_count = es.count(INDEX)['count']
+                        idx_count = es.count(es_index)['count']
                         statsmsg = 'STATS: %d logs, '%idx_count
                         for l in stats['levels'].keys():
                             statsmsg += "%s=%d, "%(l, stats['levels'][l])
