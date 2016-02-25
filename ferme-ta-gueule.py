@@ -81,7 +81,9 @@ def getTerminalSize(): # {{{
 def pattern_to_es(pattern):
     if not pattern.startswith('/') and not pattern.startswith('*') and not pattern.endswith('*'):
         pattern = '*' + pattern + '*'
-    return pattern.replace(" ", ' AND ')
+        return pattern.replace(" ", '* AND *')
+    else:
+        return pattern.replace(" ", ' AND ')
 
 
 if __name__ == '__main__':
@@ -202,7 +204,7 @@ if __name__ == '__main__':
                 time.sleep(1)
                 continue
             except elasticsearch.exceptions.TransportError:
-                logs.critical("Elasticsearch is unreachable, will retry in 1s ...")
+                logs.critical("Elasticsearch is unreachable, will retry in 1s ...", exc_info=True)
                 time.sleep(1)
                 continue
 
@@ -220,6 +222,7 @@ if __name__ == '__main__':
                             statsmsg += "%s=%d, "%(l, stats['levels'][l])
                         logs.info(statsmsg[:-2])
                 progress = True
+                time.sleep(args.interval)
             else:
                 if progress:
                     progress = False
@@ -285,5 +288,5 @@ if __name__ == '__main__':
                         lasts = [_id]
 
                     now = newnow
-            time.sleep(args.interval)
+                #time.sleep(0.1)
     except KeyboardInterrupt: pass
