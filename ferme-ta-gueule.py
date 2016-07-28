@@ -155,7 +155,7 @@ if __name__ == '__main__':
     if args._from:
         now = int(time.time()) - 3600 * args._from
     else:
-        now = int(time.time()) - 3600 - 60
+        now = int(time.time()) - 60
     lasts = []
     stats = {'levels': {}}
     laststats = time.time()
@@ -219,11 +219,16 @@ if __name__ == '__main__':
                 else:
                     if time.time() - laststats >= 60:
                         laststats = time.time()
-                        idx_count = es.count(es_index)['count']
-                        statsmsg = 'STATS: %d logs, '%idx_count
-                        for l in stats['levels'].keys():
-                            statsmsg += "%s=%d, "%(l, stats['levels'][l])
-                        logs.info(statsmsg[:-2])
+                        try:
+                            idx_count = es.count(es_index)['count']
+                            statsmsg = 'STATS: %d logs, '%idx_count
+                            for l in stats['levels'].keys():
+                                statsmsg += "%s=%d, "%(l, stats['levels'][l])
+                            logs.info(statsmsg[:-2])
+                        except elasticsearch.exceptions.ConnectionError:
+                            logs.warning("ES connection error", exc_info=True)
+                            time.sleep(1)
+                            continue
                 progress = True
                 time.sleep(args.interval)
             else:
