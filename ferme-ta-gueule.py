@@ -241,7 +241,10 @@ if __name__ == '__main__':
                     _id = ids['_id']
 
                     if not _id in lasts:
-                        prettydate = datetime.datetime.fromtimestamp(newnow).strftime('%d-%m-%Y %H:%M:%S')
+                        try:
+                            prettydate = datetime.datetime.fromtimestamp(newnow).strftime('%d-%m-%Y %H:%M:%S')
+                        except ValueError:
+                            prettydate = datetime.datetime.fromtimestamp(newnow/1000).strftime('%d-%m-%Y %H:%M:%S')
                         try:
                             loglvl = ids['_source']['level']
                             lvl = LEVELSMAP[loglvl]
