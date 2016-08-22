@@ -86,6 +86,8 @@ def pattern_to_es(pattern):
         return pattern.replace(" ", ' AND ')
 
 
+class TimePrecisionException(Exception): pass
+
 if __name__ == '__main__':
     parser = argparse.ArgumentParser()
     parser.add_argument("--full", help="Do not truncate output", action="store_true")
@@ -197,107 +199,112 @@ if __name__ == '__main__':
 
     try:
         while True:
-            #sys.stdout.write('#')
-            #sys.stdout.flush()
-            query['filter']['range']['timestamp']['gte'] = now
             try:
-                s = es.search(es_index, body=query, sort="timestamp:asc", size=maxp)
-            except elasticsearch.exceptions.ConnectionError:
-                logs.warning("ES connection error", exc_info=True)
-                time.sleep(1)
-                continue
-            except elasticsearch.exceptions.TransportError:
-                logs.critical("Elasticsearch is unreachable, will retry in 1s ...", exc_info=True)
-                time.sleep(1)
-                continue
+                #sys.stdout.write('#')
+                #sys.stdout.flush()
+                query['filter']['range']['timestamp']['gte'] = now
+                try:
+                    s = es.search(es_index, body=query, sort="timestamp:asc", size=maxp)
+                except elasticsearch.exceptions.ConnectionError:
+                    logs.warning("ES connection error", exc_info=True)
+                    time.sleep(1)
+                    continue
+                except elasticsearch.exceptions.TransportError:
+                    logs.critical("Elasticsearch is unreachable, will retry again in 1s ...", exc_info=True)
+                    time.sleep(1)
+                    continue
 
-            if s['hits']['total'] <= len(lasts):
-                if progress:
-                    if args.progress:
-                        sys.stdout.write('.')
-                        sys.stdout.flush()
-                else:
-                    if time.time() - laststats >= 60:
-                        laststats = time.time()
-                        try:
-                            idx_count = es.count(es_index)['count']
-                            statsmsg = 'STATS: %d logs, '%idx_count
-                            for l in stats['levels'].keys():
-                                statsmsg += "%s=%d, "%(l, stats['levels'][l])
-                            logs.info(statsmsg[:-2])
-                        except elasticsearch.exceptions.ConnectionError:
-                            logs.warning("ES connection error", exc_info=True)
-                            time.sleep(1)
-                            continue
-                progress = True
-                time.sleep(args.interval)
-            else:
-                if progress:
-                    progress = False
-                    if args.progress:
-                        sys.stdout.write("\n")
-                for ids in s['hits']['hits']:
-                    newnow = int(ids['_source']['timestamp'])
-                    _id = ids['_id']
-
-                    if not _id in lasts:
-                        try:
-                            prettydate = datetime.datetime.fromtimestamp(newnow).strftime('%d-%m-%Y %H:%M:%S')
-                        except ValueError:
-                            prettydate = datetime.datetime.fromtimestamp(newnow/1000).strftime('%d-%m-%Y %H:%M:%S')
-                        try:
-                            loglvl = ids['_source']['level']
-                            lvl = LEVELSMAP[loglvl]
-                        except KeyError:
-                            lvl = logging.DEBUG
-
-                        logmsg = ids['_source']['msg']
-                        if not args.full:
-                            logmsg = logmsg[:200]
-
-                        color = COLORS[logging.getLevelName(lvl)]
-                        try:
-                            on_color = ON_COLORS[logging.getLevelName(lvl)]
-                        except KeyError:
-                            on_color = None
-                        try:
-                            color_attr = COLORS_ATTRS[logging.getLevelName(lvl)]
-                        except KeyError:
-                            color_attr = None
-                        #record.msg = u'%s'%termcolor.colored(record.msg, color, on_color, color_attr)
-                        msg = termcolor.colored(prettydate, 'white', 'on_blue', ('bold',))
-                        try:
-                            msg += termcolor.colored("<%s>"%ids['_source']['level'], color, on_color, color_attr)
-                        except KeyError: pass
-                        try:
-                            host = ids['_source']['host']
-                        except:
-                            host = 'local'
-                        msg += termcolor.colored("[%s]"%host, 'blue', None, ('bold',))
-                        msg += "(%s) %s >> "%(_id, ids['_source']['program'])
-                        msg += termcolor.colored(logmsg, color, on_color, color_attr)
-
-                        logs.log(lvl, msg)
-                            
-
-
-                        try:
-                            stats['levels'][ids['_source']['level']] += 1
-                        except KeyError:
-                            try:
-                                stats['levels'][ids['_source']['level']] = 1
-                            except KeyError: pass
-
-                    if newnow == now:
-                        if not _id in lasts:
-                            lasts.append(_id)
-                        # Max packets reached
-                        if len(s['hits']['hits']) == maxp:
-                            maxp += MAX_PACKETS
+                if s['hits']['total'] <= len(lasts):
+                    if progress:
+                        if args.progress:
+                            sys.stdout.write('.')
+                            sys.stdout.flush()
                     else:
-                        maxp = MAX_PACKETS
-                        lasts = [_id]
+                        if time.time() - laststats >= 60:
+                            laststats = time.time()
+                            try:
+                                idx_count = es.count(es_index)['count']
+                                statsmsg = 'STATS: %d logs, '%idx_count
+                                for l in stats['levels'].keys():
+                                    statsmsg += "%s=%d, "%(l, stats['levels'][l])
+                                logs.info(statsmsg[:-2])
+                            except elasticsearch.exceptions.ConnectionError:
+                                logs.warning("ES connection error", exc_info=True)
+                                time.sleep(1)
+                                continue
+                    progress = True
+                    time.sleep(args.interval)
+                else:
+                    if progress:
+                        progress = False
+                        if args.progress:
+                            sys.stdout.write("\n")
+                    for ids in s['hits']['hits']:
+                        newnow = int(ids['_source']['timestamp'])
+                        if newnow > 1470000000000 and now < 1470000000000:
+                            now = now * 1000
+                            raise TimePrecisionException()
+                        _id = ids['_id']
 
-                    now = newnow
-                #time.sleep(0.1)
+                        if not _id in lasts:
+                            try:
+                                prettydate = datetime.datetime.fromtimestamp(newnow).strftime('%d-%m-%Y %H:%M:%S')
+                            except ValueError:
+                                prettydate = datetime.datetime.fromtimestamp(newnow/1000).strftime('%d-%m-%Y %H:%M:%S')
+                            try:
+                                loglvl = ids['_source']['level']
+                                lvl = LEVELSMAP[loglvl]
+                            except KeyError:
+                                lvl = logging.DEBUG
+
+                            logmsg = ids['_source']['msg']
+                            if not args.full:
+                                logmsg = logmsg[:200]
+
+                            color = COLORS[logging.getLevelName(lvl)]
+                            try:
+                                on_color = ON_COLORS[logging.getLevelName(lvl)]
+                            except KeyError:
+                                on_color = None
+                            try:
+                                color_attr = COLORS_ATTRS[logging.getLevelName(lvl)]
+                            except KeyError:
+                                color_attr = None
+                            #record.msg = u'%s'%termcolor.colored(record.msg, color, on_color, color_attr)
+                            msg = termcolor.colored(prettydate, 'white', 'on_blue', ('bold',))
+                            try:
+                                msg += termcolor.colored("<%s>"%ids['_source']['level'], color, on_color, color_attr)
+                            except KeyError: pass
+                            try:
+                                host = ids['_source']['host']
+                            except:
+                                host = 'local'
+                            msg += termcolor.colored("[%s]"%host, 'blue', None, ('bold',))
+                            msg += "(%s) %s >> "%(_id, ids['_source']['program'])
+                            msg += termcolor.colored(logmsg, color, on_color, color_attr)
+
+                            logs.log(lvl, msg)
+                                
+
+
+                            try:
+                                stats['levels'][ids['_source']['level']] += 1
+                            except KeyError:
+                                try:
+                                    stats['levels'][ids['_source']['level']] = 1
+                                except KeyError: pass
+
+                        if newnow == now:
+                            if not _id in lasts:
+                                lasts.append(_id)
+                            # Max packets reached
+                            if len(s['hits']['hits']) == maxp:
+                                maxp += MAX_PACKETS
+                        else:
+                            maxp = MAX_PACKETS
+                            lasts = [_id]
+
+                        now = newnow
+                    #time.sleep(0.1)
+            except TimePrecisionException: pass
     except KeyboardInterrupt: pass
