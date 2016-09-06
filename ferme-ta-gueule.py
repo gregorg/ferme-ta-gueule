@@ -216,7 +216,11 @@ if __name__ == '__main__':
                     time.sleep(1)
                     continue
 
-                if int(s['hits']['hits'][-1]['_source']['timestamp']) <= now:
+                try:
+                    last_timestamp = int(s['hits']['hits'][-1]['_source']['timestamp'])
+                except IndexError: continue
+
+                if last_timestamp <= now:
                     if progress:
                         if args.progress:
                             sys.stdout.write('.')
