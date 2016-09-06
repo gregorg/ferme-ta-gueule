@@ -5,6 +5,7 @@ import os
 import sys
 import time
 import datetime
+import copy
 import termcolor
 
 import argparse
@@ -163,6 +164,7 @@ if __name__ == '__main__':
     laststats = time.time()
     progress = False
     maxp = MAX_PACKETS
+    query_ids = []
     query = {"filter": {"range": {"timestamp": {"gte": now}}}}
     if level:
         try:
@@ -214,7 +216,7 @@ if __name__ == '__main__':
                     time.sleep(1)
                     continue
 
-                if s['hits']['total'] <= len(lasts):
+                if int(s['hits']['hits'][-1]['_source']['timestamp']) <= now:
                     if progress:
                         if args.progress:
                             sys.stdout.write('.')
@@ -239,12 +241,14 @@ if __name__ == '__main__':
                         progress = False
                         if args.progress:
                             sys.stdout.write("\n")
+                    query_ids = []
                     for ids in s['hits']['hits']:
                         newnow = int(ids['_source']['timestamp'])
                         if newnow > 1470000000000 and now < 1470000000000:
                             now = now * 1000
                             raise TimePrecisionException()
                         _id = ids['_id']
+                        query_ids.append(_id)
 
                         if not _id in lasts:
                             try:
@@ -285,8 +289,6 @@ if __name__ == '__main__':
 
                             logs.log(lvl, msg)
                                 
-
-
                             try:
                                 stats['levels'][ids['_source']['level']] += 1
                             except KeyError:
@@ -294,15 +296,15 @@ if __name__ == '__main__':
                                     stats['levels'][ids['_source']['level']] = 1
                                 except KeyError: pass
 
+                            lasts.append(_id)
+
                         if newnow == now:
-                            if not _id in lasts:
-                                lasts.append(_id)
                             # Max packets reached
                             if len(s['hits']['hits']) == maxp:
                                 maxp += MAX_PACKETS
                         else:
                             maxp = MAX_PACKETS
-                            lasts = [_id]
+                            lasts = copy.copy(query_ids)
 
                         now = newnow
                     #time.sleep(0.1)
