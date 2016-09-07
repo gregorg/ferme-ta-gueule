@@ -300,7 +300,7 @@ if __name__ == '__main__':
                                     stats['levels'][ids['_source']['level']] = 1
                                 except KeyError: pass
 
-                            lasts.append(_id)
+                        lasts.append(_id)
 
                         if newnow == now:
                             # Max packets reached
