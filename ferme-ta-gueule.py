@@ -21,7 +21,7 @@ logging.captureWarnings(True)
 
 level = None
 es_index = 'logs'
-MAX_PACKETS = 100
+MAX_PACKETS = 1000
 url = 'https://elasticsearch.easyflirt.com:443'
 LEVELSMAP = {
     'WARN':     logging.WARNING,
@@ -218,7 +218,9 @@ if __name__ == '__main__':
 
                 try:
                     last_timestamp = int(s['hits']['hits'][-1]['_source']['timestamp'])
-                except IndexError: continue
+                except IndexError:
+                    logs.debug("index error", exc_info=True)
+                    continue
 
                 if last_timestamp <= now:
                     if progress:
@@ -239,7 +241,11 @@ if __name__ == '__main__':
                                 time.sleep(1)
                                 continue
                     progress = True
-                    time.sleep(args.interval)
+                    #logs.debug("sleep %d ... %s <=> %s | %d results, max=%d", args.interval, now, s['hits']['hits'][-1]['_source']['timestamp'], s['hits']['total'], maxp)
+                    if s['hits']['total'] >= maxp:
+                        maxp += MAX_PACKETS
+                    else:
+                        time.sleep(args.interval)
                 else:
                     if progress:
                         progress = False
@@ -299,10 +305,13 @@ if __name__ == '__main__':
                                 try:
                                     stats['levels'][ids['_source']['level']] = 1
                                 except KeyError: pass
+                        #else:
+                        #    logs.debug("doublon: %s (%d lasts)", _id, len(lasts))
 
                         lasts.append(_id)
 
                         if newnow == now:
+                            #logs.debug("now=%s %d lasts %d query_ids", now, len(lasts), len(query_ids))
                             # Max packets reached
                             if len(s['hits']['hits']) == maxp:
                                 maxp += MAX_PACKETS
