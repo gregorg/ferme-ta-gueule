@@ -219,7 +219,7 @@ if __name__ == '__main__':
                 try:
                     last_timestamp = int(s['hits']['hits'][-1]['_source']['timestamp'])
                 except IndexError:
-                    logs.debug("index error", exc_info=True)
+                    time.sleep(args.interval)
                     continue
 
                 if last_timestamp <= now:
