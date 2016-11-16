@@ -24,6 +24,7 @@ es_index = 'logs'
 MAX_PACKETS = 1000
 url = 'https://elasticsearch.easyflirt.com:443'
 LEVELSMAP = {
+    'INFO':     logging.INFO,
     'WARN':     logging.WARNING,
     'warning':  logging.WARNING,
     'err':      logging.ERROR,
@@ -110,7 +111,9 @@ if __name__ == '__main__':
     es = elasticsearch.Elasticsearch(
         args.url, 
         use_ssl=("https" in args.url),
-        verify_certs=False
+        verify_certs=False,
+        retry_on_timeout=True,
+        max_retries=0
     )
 
     if args.index:
