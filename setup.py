@@ -1,4 +1,4 @@
-#!/usr/bin/env python
+#!/usr/bin/env python3
 # -*- coding: iso-8859-1 -*-
 # vim: ai ts=4 sts=4 et sw=4
 from setuptools import setup
@@ -11,7 +11,7 @@ setup(
     author_email="greg@easyflirt.com",
     maintainer="Easyflirt development community",
     maintainer_email="greg@easyflirt.com",
-    install_requires=["elasticsearch","termcolor","argparse"],
+    install_requires=["elasticsearch","termcolor"],
     description="Tail de logs d'erreurs",
     packages=[],
     scripts=["ferme-ta-gueule.py"]

@@ -1,4 +1,4 @@
-#!/usr/bin/env python
+#!/usr/bin/env python3
 # vim: ai ts=4 sts=4 et sw=4
 
 import os
@@ -124,13 +124,13 @@ if __name__ == '__main__':
         while True:
             try:
                 doc = es.get(index=es_index, id=args.id)
-                print "RESULT for ES#%s (%d tries) :" % (args.id, tries)
+                print("RESULT for ES#%s (%d tries) :" % (args.id, tries))
                 for k, v in doc['_source'].items():
-                    print "%-14s: %s"%(k, v)
+                    print("%-14s: %s"%(k, v))
                 break
             except elasticsearch.exceptions.NotFoundError:
                 if tries >= 4:
-                    print "Not Found."
+                    print("Not Found.")
                     sys.exit(42)
                 else:
                     tries += 1
@@ -145,6 +145,10 @@ if __name__ == '__main__':
 
     logs.addHandler(loghandler)
     logs.setLevel(logging.DEBUG)
+
+    if sys.version_info[0] < 3:
+        print(">>> Python 2 is deprecated, please use Python 3 <<<")
+        time.sleep(4)
 
     logs.info("[%s] %d logs in ElasticSearch index", args.url, es.count(es_index)['count'])
 
