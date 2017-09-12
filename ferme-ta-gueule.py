@@ -172,12 +172,12 @@ if __name__ == '__main__':
     progress = False
     maxp = MAX_PACKETS
     query_ids = []
-    query = {"filter": {"range": {"timestamp": {"gte": now}}}}
+    query = {"query": {"bool": {"filter": {"range": {"timestamp": {"gte": now}}}}}}
     if level:
         try:
             query['query']['bool']['must'].append({'match': {'level': {'query': level, 'operator' : 'or'}}})
         except KeyError:
-            query['query'] = {'bool': {'must': [{'match': {'level': {'query': level, 'operator' : 'or'}}}]}}
+            query['query']['bool']['must'] = [({'match': {'level': {'query': level, 'operator' : 'or'}}})]
         now -= 60
 
     if args.grep:
@@ -186,14 +186,14 @@ if __name__ == '__main__':
         try:
             query['query']['bool']['must'].append({'query_string': {'fields': ['msg'], 'query': grep}})
         except KeyError:
-            query['query'] = {'bool': {'must': [{'query_string': {'fields': ['msg'], 'query': grep}}]}}
+            query['query']['bool']['must'] = [({'query_string': {'fields': ['msg'], 'query': grep}})]
         now -= 60
 
     if args.exclude:
         try:
             query['query']['bool']['must_not'].append({'query_string': {'fields': ['msg'], 'query': pattern_to_es(args.exclude)}})
         except KeyError:
-            query['query'] = {'bool': {'must_not': [{'query_string': {'fields': ['msg'], 'query': pattern_to_es(args.exclude)}}]}}
+            query['query']['bool']['must_not'] = [({'query_string': {'fields': ['msg'], 'query': pattern_to_es(args.exclude)}})]
         query['query']['bool']['must_not'].append({'query_string': {'fields': ['program'], 'query': args.exclude}})
         now -= 60
 
@@ -201,7 +201,7 @@ if __name__ == '__main__':
         try:
             query['query']['bool']['must'].append({'query_string': {'fields': ['program'], 'query': args.program}})
         except KeyError:
-            query['query'] = {'bool': {'must': [{'query_string': {'fields': ['program'], 'query': args.program}}]}}
+            query['query']['bool']['must'] = [({'query_string': {'fields': ['program'], 'query': args.program}})]
         now -= 60
 
     logs.debug("ES query: %s"%query)
@@ -211,7 +211,7 @@ if __name__ == '__main__':
             try:
                 #sys.stdout.write('#')
                 #sys.stdout.flush()
-                query['filter']['range']['timestamp']['gte'] = now
+                query['query']['bool']['filter']['range']['timestamp']['gte'] = now
                 try:
                     s = es.search(es_index, body=query, sort="timestamp:asc", size=maxp)
                 except elasticsearch.exceptions.ConnectionError:
