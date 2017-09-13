@@ -8,7 +8,7 @@ Logger live d'erreurs provenant d'un cluster ElasticSearch
 
 ```
 apt-get install python3-setuptools python3-pip
-pip3 install --user requirements.txt
+pip3 install --user -r requirements.txt
 
 ```
 
@@ -20,7 +20,7 @@ apt-get install python3-setuptools python3-pip
 git clone https://github.com/gregorg/ferme-ta-gueule.git
 
 cd ferme-ta-gueule
-python3 setup.py install --user # OR pip3 install --user requirements.txt
+python3 setup.py install --user # OR pip3 install --user -r requirements.txt
 
 ```
 
