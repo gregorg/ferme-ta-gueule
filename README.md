@@ -3,6 +3,16 @@ Logger live d'erreurs provenant d'un cluster ElasticSearch
 
 ![Ferme_ta_gueule_by_Katikut](http://fc09.deviantart.net/fs48/f/2009/226/3/f/Ferme_ta_gueule_by_Katikut.jpg)
 
+
+## Migration vers Python 3
+
+```
+apt-get install python3-setuptools python3-pip
+pip3 install --user requirements.txt
+
+```
+
+
 ## Comment l'installer
 
 ```
