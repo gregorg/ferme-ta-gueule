@@ -49,6 +49,7 @@ COLORS_ATTRS = {
     'DEBUG': ('dark',),
 }
 
+
 class ColoredFormatter(logging.Formatter): # {{{
 
     def __init__(self):
@@ -90,6 +91,19 @@ def pattern_to_es(pattern):
 
 class TimePrecisionException(Exception): pass
 
+
+def rebuild_query(query, oldfield, newfield):
+    for k, v in query.items():
+        if isinstance(v, dict):
+            v = rebuild_query(v, oldfield, newfield)
+        if k == oldfield:
+            k = k.replace(oldfield, newfield)
+            query[k] = v
+            del query[oldfield]
+    return query
+
+
+
 if __name__ == '__main__':
     parser = argparse.ArgumentParser()
     parser.add_argument("--full", help="Do not truncate output", action="store_true")
@@ -108,6 +122,7 @@ if __name__ == '__main__':
     parser.add_argument("--url", help="Use another ES", action="store", default=url)
     args = parser.parse_args()
 
+    datefield = "timestamp"
     es = elasticsearch.Elasticsearch(
         args.url, 
         use_ssl=("https" in args.url),
@@ -172,7 +187,7 @@ if __name__ == '__main__':
     progress = False
     maxp = MAX_PACKETS
     query_ids = []
-    query = {"query": {"bool": {"filter": {"range": {"timestamp": {"gte": now}}}}}}
+    query = {"query": {"bool": {"filter": {"range": {datefield: {"gte": now}}}}}}
     if level:
         try:
             query['query']['bool']['must'].append({'match': {'level': {'query': level, 'operator' : 'or'}}})
@@ -211,12 +226,25 @@ if __name__ == '__main__':
             try:
                 #sys.stdout.write('#')
                 #sys.stdout.flush()
-                query['query']['bool']['filter']['range']['timestamp']['gte'] = now
+                if isinstance(now, int):
+                    query['query']['bool']['filter']['range'][datefield]['gte'] = now
+                else:
+                    query['query']['bool']['filter']['range'][datefield]['gte'] = datetime.datetime.strftime(now, "%Y-%m-%dT%H:%M:%S+0000")
                 try:
-                    s = es.search(es_index, body=query, sort="timestamp:asc", size=maxp)
+                    s = es.search(es_index, body=query, sort="%s:asc"%datefield, size=maxp)
                 except elasticsearch.exceptions.ConnectionError:
                     logs.warning("ES connection error", exc_info=True)
                     time.sleep(1)
+                    continue
+                except elasticsearch.exceptions.RequestError as e:
+                    if 'No mapping found for' in str(e.info):
+                        datefield = "datetime"
+                        query = rebuild_query(query, "timestamp", datefield)
+                        now = datetime.datetime.now() - datetime.timedelta(hours=args._from)
+                        query['query']['bool']['filter']['range'][datefield]['gte'] = datetime.datetime.strftime(now, "%Y-%m-%dT%H:%M:%S+0000")
+                    else:
+                        logs.critical("Elasticsearch request error, will retry again in 1s ...", exc_info=True)
+                        time.sleep(1)
                     continue
                 except elasticsearch.exceptions.TransportError:
                     logs.critical("Elasticsearch is unreachable, will retry again in 1s ...", exc_info=True)
@@ -224,10 +252,17 @@ if __name__ == '__main__':
                     continue
 
                 try:
-                    last_timestamp = int(s['hits']['hits'][-1]['_source']['timestamp'])
+                    last_timestamp = int(s['hits']['hits'][-1]['_source'][datefield])
                 except IndexError:
                     time.sleep(args.interval)
                     continue
+                except ValueError:
+                    # 2016-06-03T12:02:53+0000
+                    try:
+                        last_timestamp = datetime.datetime.strptime(s['hits']['hits'][-1]['_source'][datefield], "%Y-%m-%dT%H:%M:%S+0000")
+                    except:
+                        logs.critical("Can't parse date: %s", s['hits']['hits'][-1]['_source'][datefield])
+                        sys.exit(1)
 
                 if last_timestamp <= now:
                     if progress:
@@ -248,7 +283,7 @@ if __name__ == '__main__':
                                 time.sleep(1)
                                 continue
                     progress = True
-                    #logs.debug("sleep %d ... %s <=> %s | %d results, max=%d", args.interval, now, s['hits']['hits'][-1]['_source']['timestamp'], s['hits']['total'], maxp)
+                    #logs.debug("sleep %d ... %s <=> %s | %d results, max=%d", args.interval, now, s['hits']['hits'][-1]['_source'][datefield], s['hits']['total'], maxp)
                     if s['hits']['total'] >= maxp:
                         maxp += MAX_PACKETS
                     else:
@@ -260,10 +295,13 @@ if __name__ == '__main__':
                             sys.stdout.write("\n")
                     query_ids = []
                     for ids in s['hits']['hits']:
-                        newnow = int(ids['_source']['timestamp'])
-                        if newnow > 1470000000000 and now < 1470000000000:
-                            now = now * 1000
-                            raise TimePrecisionException()
+                        try:
+                            newnow = int(ids['_source'][datefield])
+                            if newnow > 1470000000000 and now < 1470000000000:
+                                now = now * 1000
+                                raise TimePrecisionException()
+                        except ValueError:
+                            newnow = datetime.datetime.strptime(ids['_source'][datefield], "%Y-%m-%dT%H:%M:%S+0000")
                         _id = ids['_id']
                         query_ids.append(_id)
 
@@ -272,13 +310,20 @@ if __name__ == '__main__':
                                 prettydate = datetime.datetime.fromtimestamp(newnow).strftime('%d-%m-%Y %H:%M:%S')
                             except ValueError:
                                 prettydate = datetime.datetime.fromtimestamp(newnow/1000).strftime('%d-%m-%Y %H:%M:%S')
-                            try:
-                                loglvl = ids['_source']['level']
-                                lvl = LEVELSMAP[loglvl]
-                            except KeyError:
-                                lvl = logging.DEBUG
+                            except TypeError:
+                                prettydate = str(newnow)
+                            loglvl = logging.DEBUG
+                            for l in ('level_name', 'level'):
+                                try:
+                                    loglvl = ids['_source'][l]
+                                    lvl = LEVELSMAP[loglvl]
+                                except KeyError:
+                                    continue
 
-                            logmsg = ids['_source']['msg']
+                            try:
+                                logmsg = ids['_source']['msg']
+                            except KeyError:
+                                logmsg = ids['_source']['message']
                             if not args.full:
                                 logmsg = logmsg[:200]
 
@@ -293,15 +338,23 @@ if __name__ == '__main__':
                                 color_attr = None
                             #record.msg = u'%s'%termcolor.colored(record.msg, color, on_color, color_attr)
                             msg = termcolor.colored(prettydate, 'white', 'on_blue', ('bold',))
-                            try:
-                                msg += termcolor.colored("<%s>"%ids['_source']['level'], color, on_color, color_attr)
-                            except KeyError: pass
+                            if 'msg' in ids['_source']:
+                                try:
+                                    msg += termcolor.colored("<%s>"%ids['_source']['level'], color, on_color, color_attr)
+                                except KeyError: pass
+                            else:
+                                try:
+                                    msg += termcolor.colored("<%s>"%ids['_source']['level_name'], color, on_color, color_attr)
+                                except KeyError: pass
                             try:
                                 host = ids['_source']['host']
+                                msg += termcolor.colored("[%s]"%host, 'blue', None, ('bold',))
                             except:
                                 host = 'local'
-                            msg += termcolor.colored("[%s]"%host, 'blue', None, ('bold',))
-                            msg += "(%s) %s >> "%(_id, ids['_source']['program'])
+                            try:
+                                msg += "(%s) %s >> "%(_id, ids['_source']['program'])
+                            except KeyError:
+                                msg += "(%s) %s >> "%(_id, ids['_source']['context']['user'])
                             msg += termcolor.colored(logmsg, color, on_color, color_attr)
 
                             logs.log(lvl, msg)
