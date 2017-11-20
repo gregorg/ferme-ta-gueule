@@ -240,7 +240,7 @@ if __name__ == '__main__':
                     if 'No mapping found for' in str(e.info):
                         datefield = "datetime"
                         query = rebuild_query(query, "timestamp", datefield)
-                        now = datetime.datetime.now() - datetime.timedelta(hours=args._from if args._from is not None else 0)
+                        now = datetime.datetime.now() - datetime.timedelta(hours=args._from if args._from is not None else 1)
                         query['query']['bool']['filter']['range'][datefield]['gte'] = datetime.datetime.strftime(now, "%Y-%m-%dT%H:%M:%S+0000")
                     else:
                         logs.critical("Elasticsearch request error, will retry again in 1s ...", exc_info=True)
