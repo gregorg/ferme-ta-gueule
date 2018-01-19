@@ -312,7 +312,7 @@ if __name__ == '__main__':
                                 prettydate = datetime.datetime.fromtimestamp(newnow/1000).strftime('%d-%m-%Y %H:%M:%S')
                             except TypeError:
                                 prettydate = str(newnow)
-                            loglvl = logging.DEBUG
+                            lvl = logging.DEBUG
                             for l in ('level_name', 'level'):
                                 try:
                                     loglvl = ids['_source'][l]
