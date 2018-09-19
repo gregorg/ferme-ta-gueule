@@ -369,7 +369,7 @@ if __name__ == '__main__':
                                 msg += "(%s) %s >> "%(_id, ids['_source']['program'])
                             except KeyError:
                                 msg += "(%s) %s >> "%(_id, ids['_source']['context']['user'])
-                            if not args.full and not args.short:
+                            if not args.full and not args.short and tty_columns:
                                 logmsg = logmsg[:(tty_columns - len(msg) + 44)]
                             msg += termcolor.colored(logmsg, color, on_color, color_attr)
 
