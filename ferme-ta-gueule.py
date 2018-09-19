@@ -103,10 +103,20 @@ def rebuild_query(query, oldfield, newfield):
     return query
 
 
+def get_terminal_width():
+    try:
+        tty_rows, tty_columns = os.popen('stty size', 'r').read().split()
+        return int(tty_columns)
+    except:
+        logs.warning("Unable to guess terminal size")
+        return False
+
+
 
 if __name__ == '__main__':
     parser = argparse.ArgumentParser()
     parser.add_argument("--full", help="Do not truncate output", action="store_true")
+    parser.add_argument("--short", help="truncate output to 200 chars", action="store_true")
     parser.add_argument("--error", help="Only errors", action="store_true")
     parser.add_argument("--fatal", help="Only fatals", action="store_true")
     parser.add_argument("--notice", help="Only notices", action="store_true")
@@ -220,6 +230,8 @@ if __name__ == '__main__':
         now -= 60
 
     logs.debug("ES query: %s"%query)
+    tty_columns = get_terminal_width()
+
 
     try:
         while True:
@@ -324,8 +336,10 @@ if __name__ == '__main__':
                                 logmsg = ids['_source']['msg']
                             except KeyError:
                                 logmsg = ids['_source']['message']
-                            if not args.full:
+                            if args.short:
                                 logmsg = logmsg[:200]
+                            elif not args.full:
+                                logmsg = " ".join(logmsg.split("\n")[:2])
 
                             color = COLORS[logging.getLevelName(lvl)]
                             try:
@@ -355,6 +369,8 @@ if __name__ == '__main__':
                                 msg += "(%s) %s >> "%(_id, ids['_source']['program'])
                             except KeyError:
                                 msg += "(%s) %s >> "%(_id, ids['_source']['context']['user'])
+                            if not args.full and not args.short:
+                                logmsg = logmsg[:(tty_columns - len(msg) + 44)]
                             msg += termcolor.colored(logmsg, color, on_color, color_attr)
 
                             logs.log(lvl, msg)
@@ -381,5 +397,7 @@ if __name__ == '__main__':
 
                         now = newnow
                     #time.sleep(0.1)
+                    if tty_columns:
+                        tty_columns = get_terminal_width()
             except TimePrecisionException: pass
     except KeyboardInterrupt: pass
