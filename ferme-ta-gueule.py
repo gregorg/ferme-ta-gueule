@@ -79,12 +79,6 @@ class ColoredFormatter(logging.Formatter): # {{{
 # }}}
 
 
-def getTerminalSize(): # {{{
-    rows, columns = os.popen('stty size', 'r').read().split()
-    return (rows, columns)
-# }}}
-
-
 def pattern_to_es(pattern):
     if not pattern.startswith('/') and not pattern.startswith('*') and not pattern.endswith('*'):
         pattern = '*' + pattern + '*'
@@ -268,6 +262,7 @@ if __name__ == '__main__':
                 except elasticsearch.exceptions.TransportError:
                     logs.critical("Elasticsearch is unreachable, will retry again in 1s ...", exc_info=True)
                     time.sleep(1)
+                    now = int(time.time()) - 60
                     continue
 
                 try:
@@ -377,7 +372,7 @@ if __name__ == '__main__':
                             except KeyError:
                                 msg += "(%s) %s >> "%(_id, ids['_source']['context']['user'])
                             if not args.full and not args.short and tty_columns:
-                                logmsg = logmsg[:(tty_columns - len(msg) + 44)]
+                                logmsg = logmsg.replace("\t", "  ")[:(tty_columns - len(msg) + 44)]
                             msg += termcolor.colored(logmsg, color, on_color, color_attr)
 
                             logs.log(lvl, msg)
