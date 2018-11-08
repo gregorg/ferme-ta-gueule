@@ -24,7 +24,6 @@ import logging
 logging.captureWarnings(True)
 
 level = None
-es_index = 'logs'
 MAX_PACKETS = 1000
 url = 'https://elasticsearch.easyflirt.com:443'
 LEVELSMAP = {
@@ -114,7 +113,7 @@ def get_terminal_width():
 if __name__ == '__main__':
     parser = argparse.ArgumentParser()
     parser.add_argument("--full", help="Do not truncate output", action="store_true")
-    parser.add_argument("--short", help="truncate output to 200 chars", action="store_true")
+    parser.add_argument("--short", help="truncate output to 200 chars (default to terminal size)", action="store_true")
     parser.add_argument("--error", help="Only errors", action="store_true")
     parser.add_argument("--fatal", help="Only fatals", action="store_true")
     parser.add_argument("--notice", help="Only notices", action="store_true")
@@ -125,7 +124,7 @@ if __name__ == '__main__':
     parser.add_argument("--grep", help="grep pattern. Use /pattern/ for regex search.", action="store")
     parser.add_argument("--exclude", help="grep pattern. Use /pattern/ for regex exclusion.", action="store")
     parser.add_argument("--program", help="grep program.", action="store")
-    parser.add_argument("--index", help="specify elasticsearch index, default %s"%es_index, action="store")
+    parser.add_argument("--index", help="specify elasticsearch index, default 'logs'", action="store", default='logs')
     parser.add_argument("--id", help="get specific id in ES index", action="store")
     parser.add_argument("--interval", help="interval between queries, default 1s", action="store", type=float, default=1)
     parser.add_argument("--url", help="Use another ES", action="store", default=url)
@@ -140,8 +139,7 @@ if __name__ == '__main__':
         max_retries=0
     )
 
-    if args.index:
-        es_index = args.index
+    es_index = args.index
 
     if args.id:
         tries = 1
@@ -244,6 +242,8 @@ if __name__ == '__main__':
                 else:
                     query['query']['bool']['filter']['range'][datefield]['gte'] = datetime.datetime.strftime(now, "%Y-%m-%dT%H:%M:%S+0000")
                 try:
+                    if maxp > 10000:
+                        maxp = 10000
                     s = es.search(es_index, body=query, sort="%s:asc"%datefield, size=maxp)
                 except elasticsearch.exceptions.ConnectionError:
                     logs.warning("ES connection error", exc_info=True)
