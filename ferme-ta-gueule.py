@@ -259,7 +259,7 @@ if __name__ == '__main__':
                         logs.critical("Elasticsearch request error, will retry again in 1s ...", exc_info=True)
                         time.sleep(1)
                     continue
-                except elasticsearch.exceptions.TransportError:
+                except (elasticsearch.exceptions.TransportError, elasticsearch.exceptions.NotFoundError):
                     logs.critical("Elasticsearch is unreachable, will retry again in 1s ...", exc_info=True)
                     time.sleep(1)
                     now = int(time.time()) - 60
