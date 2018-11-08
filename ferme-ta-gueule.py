@@ -23,7 +23,7 @@ import urllib3
 import logging
 logging.captureWarnings(True)
 
-level = None
+levels = None
 MAX_PACKETS = 1000
 url = 'https://elasticsearch.easyflirt.com:443'
 LEVELSMAP = {
@@ -175,15 +175,15 @@ if __name__ == '__main__':
     logs.info("[%s] %d logs in ElasticSearch index", args.url, es.count(es_index)['count'])
 
     if args.notice:
-        level = " ".join([k for k, v in LEVELSMAP.items() if v == logging.DEBUG])
+        levels = [k for k, v in LEVELSMAP.items() if v == logging.DEBUG]
     elif args.error:
-        level = " ".join([k for k, v in LEVELSMAP.items() if v >= logging.ERROR])
+        levels = [k for k, v in LEVELSMAP.items() if v >= logging.ERROR]
     elif args.warn:
-        level = " ".join([k for k, v in LEVELSMAP.items() if v >= logging.WARNING])
+        levels = [k for k, v in LEVELSMAP.items() if v >= logging.WARNING]
     elif args.info:
-        level = " ".join([k for k, v in LEVELSMAP.items() if v >= logging.INFO])
+        levels = [k for k, v in LEVELSMAP.items() if v >= logging.INFO]
     elif args.fatal:
-        level = " ".join([k for k, v in LEVELSMAP.items() if v == logging.CRITICAL])
+        levels = [k for k, v in LEVELSMAP.items() if v == logging.CRITICAL]
 
 
     if args._from:
@@ -197,11 +197,14 @@ if __name__ == '__main__':
     maxp = MAX_PACKETS
     query_ids = []
     query = {"query": {"bool": {"filter": {"range": {datefield: {"gte": now}}}}}}
-    if level:
+    if levels:
+        levels_query = {"bool":{"should":[],"minimum_should_match":1}}
+        for level in levels:
+            levels_query['bool']['should'].append({"match_phrase":{"level":level}})
         try:
-            query['query']['bool']['must'].append({'match': {'level': {'query': level, 'operator' : 'or'}}})
+            query['query']['bool']['must'].append(levels_query)
         except KeyError:
-            query['query']['bool']['must'] = [({'match': {'level': {'query': level, 'operator' : 'or'}}})]
+            query['query']['bool']['must'] = [levels_query]
         now -= 60
 
     if args.grep:
