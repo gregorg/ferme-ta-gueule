@@ -30,6 +30,7 @@ LEVELSMAP = {
     'INFO':     logging.INFO,
     'WARN':     logging.WARNING,
     'warning':  logging.WARNING,
+    'WARNING':  logging.WARNING,
     'err':      logging.ERROR,
     'alert':    logging.ERROR,
     'ERROR':    logging.ERROR,
