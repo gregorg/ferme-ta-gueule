@@ -34,6 +34,7 @@ LEVELSMAP = {
     'err':      logging.ERROR,
     'alert':    logging.ERROR,
     'ERROR':    logging.ERROR,
+    'ALERT':    logging.CRITICAL,
     'FATAL':    logging.CRITICAL,
 }
 COLORS = {
