@@ -50,7 +50,7 @@ ON_COLORS = {
     'ERROR': 'on_red',
 }
 COLORS_ATTRS = {
-    'CRITICAL': ('bold', 'blink'),
+    'CRITICAL': ('bold'),
     'WARNING': ('bold',),
     'ERROR': ('bold',),
     'DEBUG': ('dark',),
