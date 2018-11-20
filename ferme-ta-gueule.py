@@ -7,6 +7,7 @@ import time
 import datetime
 import copy
 import termcolor
+import subprocess
 
 import argparse
 
@@ -132,7 +133,21 @@ if __name__ == '__main__':
     parser.add_argument("--id", help="get specific id in ES index", action="store")
     parser.add_argument("--interval", help="interval between queries, default 1s", action="store", type=float, default=1)
     parser.add_argument("--url", help="Use another ES", action="store", default=url)
+    parser.add_argument("--no-update", help="Update", action="store_true", default=False)
     args = parser.parse_args()
+
+    # Auto-update
+    if not args.no_update:
+        oldcwd = os.getcwd()
+        try:
+            os.chdir(os.path.dirname(os.path.abspath(sys.argv[0])))
+            subprocess.run(["/usr/bin/git", "pull", "-q", "origin", "master"])
+            os.chdir(oldcwd)
+            sys.argv.append("--no-update")
+            os.execv(sys.argv[0], sys.argv)
+            sys.exit(0)
+        except:
+            print("Update failed.")
 
     datefield = "timestamp"
     es = elasticsearch.Elasticsearch(
