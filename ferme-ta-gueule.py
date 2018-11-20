@@ -50,7 +50,7 @@ ON_COLORS = {
     'ERROR': 'on_red',
 }
 COLORS_ATTRS = {
-    'CRITICAL': ('bold'),
+    'CRITICAL': ('bold',),
     'WARNING': ('bold',),
     'ERROR': ('bold',),
     'DEBUG': ('dark',),
@@ -141,7 +141,7 @@ if __name__ == '__main__':
         oldcwd = os.getcwd()
         try:
             os.chdir(os.path.dirname(os.path.abspath(sys.argv[0])))
-            subprocess.run(["/usr/bin/git", "pull", "-q", "origin", "master"])
+            subprocess.run(["/usr/bin/git", "pull", "origin", "master"])
             os.chdir(oldcwd)
             sys.argv.append("--no-update")
             os.execv(sys.argv[0], sys.argv)
