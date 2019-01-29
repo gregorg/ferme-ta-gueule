@@ -37,6 +37,7 @@ LEVELSMAP = {
     'ERROR':    logging.ERROR,
     'ALERT':    logging.CRITICAL,
     'FATAL':    logging.CRITICAL,
+    'CRITICAL': logging.CRITICAL,
 }
 COLORS = {
     'DEBUG': 'white',
@@ -129,6 +130,7 @@ if __name__ == '__main__':
     parser.add_argument("--exclude", help="grep pattern. Use /pattern/ for regex exclusion.", action="store")
     parser.add_argument("--program", help="grep program.", action="store")
     parser.add_argument("--tag", help="grep tag.", action="store")
+    parser.add_argument("--host", help="host only", action="store")
     parser.add_argument("--index", help="specify elasticsearch index, default 'logs'", action="store", default='logs')
     parser.add_argument("--id", help="get specific id in ES index", action="store")
     parser.add_argument("--interval", help="interval between queries, default 1s", action="store", type=float, default=1)
@@ -137,7 +139,7 @@ if __name__ == '__main__':
     args = parser.parse_args()
 
     # Auto-update
-    if not args.no_update:
+    if not args.no_update and not args.id:
         oldcwd = os.getcwd()
         try:
             os.chdir(os.path.dirname(os.path.abspath(sys.argv[0])))
@@ -255,6 +257,13 @@ if __name__ == '__main__':
             query['query']['bool']['must'].append({'query_string': {'fields': ['msg'], 'query': "\t%s \-"%args.tag}})
         except KeyError:
             query['query']['bool']['must'] = [({'query_string': {'fields': ['msg'], 'query': "\t%s \-"%args.tag}})]
+        now -= 60
+
+    if args.host:
+        try:
+            query['query']['bool']['must'].append({'query_string': {'fields': ['host'], 'query': args.host}})
+        except KeyError:
+            query['query']['bool']['must'] = [({'query_string': {'fields': ['host'], 'query': args.host}})]
         now -= 60
 
     logs.debug("ES query: %s"%query)
