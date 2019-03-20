@@ -38,6 +38,7 @@ LEVELSMAP = {
     'ALERT':    logging.CRITICAL,
     'FATAL':    logging.CRITICAL,
     'CRITICAL': logging.CRITICAL,
+    'EMERGENCY': logging.CRITICAL,
 }
 COLORS = {
     'DEBUG': 'white',
