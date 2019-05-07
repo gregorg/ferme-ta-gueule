@@ -155,8 +155,7 @@ if __name__ == '__main__':
     datefield = "timestamp"
     es = elasticsearch.Elasticsearch(
         args.url, 
-        use_ssl=("https" in args.url),
-        verify_certs=False,
+        use_ssl=("https://" in args.url),
         retry_on_timeout=True,
         max_retries=0
     )
