@@ -347,6 +347,9 @@ if __name__ == '__main__':
                             sys.stdout.write("\n")
                     query_ids = []
                     for ids in s['hits']['hits']:
+                        if not 'program' in ids['_source']:
+                            logs.log(logging.WARN, "Bad formatted log: %s"%str(ids['_source']))
+                            continue
                         try:
                             newnow = int(ids['_source'][datefield])
                             if newnow > 1470000000000 and now < 1470000000000:
