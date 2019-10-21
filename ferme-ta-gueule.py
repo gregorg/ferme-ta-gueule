@@ -297,7 +297,7 @@ if __name__ == '__main__':
                         logs.critical("Elasticsearch request error, will retry again in 1s ...", exc_info=True)
                         time.sleep(1)
                     continue
-                except (elasticsearch.exceptions.TransportError, elasticsearch.exceptions.NotFoundError):
+                except (elasticsearch.exceptions.TransportError, elasticsearch.exceptions.NotFoundError, elasticsearch.exceptions.ConnectionError):
                     logs.critical("Elasticsearch is unreachable, will retry again in 1s ...", exc_info=True)
                     time.sleep(1)
                     now = int(time.time()) - 60
@@ -331,7 +331,7 @@ if __name__ == '__main__':
                                     statsmsg += "%s=%d, "%(l, stats['levels'][l])
                                 logs.info(statsmsg[:-2])
                             except elasticsearch.exceptions.ConnectionError:
-                                logs.warning("ES connection error", exc_info=True)
+                                logs.warning("ElasticSearch connection error, waiting 1sec before to try again...", exc_info=False)
                                 time.sleep(1)
                                 continue
                     progress = True
@@ -347,13 +347,10 @@ if __name__ == '__main__':
                             sys.stdout.write("\n")
                     query_ids = []
                     for ids in s['hits']['hits']:
-                        if not 'program' in ids['_source']:
-                            logs.log(logging.WARN, "Bad formatted log: %s"%str(ids['_source']))
-                            continue
                         try:
                             newnow = int(ids['_source'][datefield])
                             if newnow > 1470000000000 and now < 1470000000000:
-                                now = now * 1000
+                                newnow = newnow / 1000
                                 raise TimePrecisionException()
                         except ValueError:
                             newnow = datetime.datetime.strptime(ids['_source'][datefield], "%Y-%m-%dT%H:%M:%S+0000")
@@ -442,5 +439,5 @@ if __name__ == '__main__':
                     #time.sleep(0.1)
                     if tty_columns:
                         tty_columns = get_terminal_width()
-            except TimePrecisionException: pass
+            except TimePrecisionException: time.sleep(1)
     except KeyboardInterrupt: pass
