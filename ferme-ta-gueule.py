@@ -336,7 +336,11 @@ if __name__ == '__main__':
                                 continue
                     progress = True
                     #logs.debug("sleep %d ... %s <=> %s | %d results, max=%d", args.interval, now, s['hits']['hits'][-1]['_source'][datefield], s['hits']['total'], maxp)
-                    if s['hits']['total'] >= maxp:
+                    try:
+                        total = s['hits']['total']['value']
+                    except TypeError:
+                        total = s['hits']['total']
+                    if total >= maxp:
                         maxp += MAX_PACKETS
                     else:
                         time.sleep(args.interval)
