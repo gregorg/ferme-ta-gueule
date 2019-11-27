@@ -114,6 +114,15 @@ def get_terminal_width():
         logs.warning("Unable to guess terminal size")
         return False
 
+def get_datetime(field):
+    # 2016-06-03T12:02:53+0000
+    # 2019-11-27T12:39:40.609424+00:00
+    for format in ("%Y-%m-%dT%H:%M:%S+0000", "%Y-%m-%dT%H:%M:%S.%f+00:00"):
+        try:
+            return datetime.datetime.strptime(field, format)
+        except:
+            pass
+    return None
 
 
 if __name__ == '__main__':
@@ -278,7 +287,7 @@ if __name__ == '__main__':
                 if isinstance(now, int):
                     query['query']['bool']['filter']['range'][datefield]['gte'] = now
                 else:
-                    query['query']['bool']['filter']['range'][datefield]['gte'] = datetime.datetime.strftime(now, "%Y-%m-%dT%H:%M:%S+0000")
+                    query['query']['bool']['filter']['range'][datefield]['gte'] = now
                 try:
                     if maxp > 10000:
                         maxp = 10000
@@ -292,7 +301,7 @@ if __name__ == '__main__':
                         datefield = "datetime"
                         query = rebuild_query(query, "timestamp", datefield)
                         now = datetime.datetime.now() - datetime.timedelta(hours=args._from if args._from is not None else 1)
-                        query['query']['bool']['filter']['range'][datefield]['gte'] = datetime.datetime.strftime(now, "%Y-%m-%dT%H:%M:%S+0000")
+                        query['query']['bool']['filter']['range'][datefield]['gte'] = get_datetime(now)
                     else:
                         logs.critical("Elasticsearch request error, will retry again in 1s ...", exc_info=True)
                         time.sleep(1)
@@ -309,10 +318,8 @@ if __name__ == '__main__':
                     time.sleep(args.interval)
                     continue
                 except ValueError:
-                    # 2016-06-03T12:02:53+0000
-                    try:
-                        last_timestamp = datetime.datetime.strptime(s['hits']['hits'][-1]['_source'][datefield], "%Y-%m-%dT%H:%M:%S+0000")
-                    except:
+                    last_timestamp = get_datetime(s['hits']['hits'][-1]['_source'][datefield])
+                    if last_timestamp is None:
                         logs.critical("Can't parse date: %s", s['hits']['hits'][-1]['_source'][datefield])
                         sys.exit(1)
 
@@ -352,10 +359,13 @@ if __name__ == '__main__':
                     query_ids = []
                     for ids in s['hits']['hits']:
                         try:
-                            newnow = int(ids['_source'][datefield])
-                            if newnow > 1470000000000 and now < 1470000000000:
-                                newnow = newnow / 1000
-                                raise TimePrecisionException()
+                            newnow = ids['_source'][datefield]
+                            try:
+                                if newnow > 1470000000000 and now < 1470000000000:
+                                    newnow = newnow / 1000
+                                    raise TimePrecisionException()
+                            except TypeError:
+                                newnow = get_datetime(newnow)
                         except ValueError:
                             newnow = datetime.datetime.strptime(ids['_source'][datefield], "%Y-%m-%dT%H:%M:%S+0000")
                         _id = ids['_id']
