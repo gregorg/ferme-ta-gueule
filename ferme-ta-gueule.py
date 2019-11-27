@@ -175,7 +175,7 @@ if __name__ == '__main__':
         tries = 1
         while True:
             try:
-                doc = es.get(index=es_index, id=args.id, doc_type='log')
+                doc = es.get(index=es_index, id=args.id)
                 print("RESULT for ES#%s (%d tries) :" % (args.id, tries))
                 for k, v in doc['_source'].items():
                     print("%-14s: %s"%(k, v))
