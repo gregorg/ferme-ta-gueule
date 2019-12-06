@@ -293,7 +293,7 @@ if __name__ == '__main__':
                         maxp = 10000
                     s = es.search(es_index, body=query, sort="%s:asc"%datefield, size=maxp)
                 except elasticsearch.exceptions.ConnectionError:
-                    logs.warning("ES connection error", exc_info=True)
+                    logs.warning("ES connection error, retry in 1sec ...", exc_info=False)
                     time.sleep(1)
                     continue
                 except elasticsearch.exceptions.RequestError as e:
