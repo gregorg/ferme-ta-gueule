@@ -146,10 +146,11 @@ if __name__ == '__main__':
     parser.add_argument("--interval", help="interval between queries, default 1s", action="store", type=float, default=1)
     parser.add_argument("--url", help="Use another ES", action="store", default=url)
     parser.add_argument("--no-update", help="Update", action="store_true", default=False)
+    parser.add_argument("--list", help="List indices", action="store_true", default=False)
     args = parser.parse_args()
 
     # Auto-update
-    if not args.no_update and not args.id:
+    if not args.no_update and not args.id and not args.list:
         oldcwd = os.getcwd()
         try:
             os.chdir(os.path.dirname(os.path.abspath(sys.argv[0])))
@@ -168,6 +169,13 @@ if __name__ == '__main__':
         retry_on_timeout=True,
         max_retries=0
     )
+
+    if args.list:
+        for index in es.indices.get("*"):
+            s = es.search(index, body={"query": {"bool": {"must": {"wildcard": {"program": "*"}}}}}, size=1)
+            if s['hits']['total']['value'] > 0:
+                print("- %s"%index)
+        sys.exit(0)
 
     es_index = args.index
 
