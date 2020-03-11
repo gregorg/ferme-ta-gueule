@@ -8,6 +8,8 @@ import datetime
 import copy
 import termcolor
 import subprocess
+import cmd
+import threading
 
 import argparse
 
@@ -57,6 +59,19 @@ COLORS_ATTRS = {
     'ERROR': ('bold',),
     'DEBUG': ('dark',),
 }
+
+class FtgShell(cmd.Cmd):
+    prompt = '(ftg) '
+
+    def set_event(self, event):
+        self.event = event
+
+    def do_level(self, arg):
+        print("TODO")
+
+    def do_q(self, arg):
+        self.event.set()
+        return True
 
 
 class ColoredFormatter(logging.Formatter): # {{{
@@ -286,10 +301,18 @@ if __name__ == '__main__':
     logs.debug("ES query: %s"%query)
     tty_columns = get_terminal_width()
 
+    shell_event = threading.Event()
+    shell = FtgShell()
+    shell.set_event(shell_event)
+    shell_thread = threading.Thread(target=shell.cmdloop)
+    shell_thread.daemon = True
+    shell_thread.start()
 
     try:
         while True:
             try:
+                if shell_event.is_set():
+                    break
                 #sys.stdout.write('#')
                 #sys.stdout.flush()
                 if isinstance(now, int):
