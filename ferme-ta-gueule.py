@@ -99,6 +99,7 @@ class FtgShell(cmd.Cmd):
         self.ftg.set_index(arg)
 
     def do_id(self, arg):
+        """print details for an Id"""
         doc = self.ftg.get_id(arg)
         if doc:
             print("👀 ID #%s :" % (arg,))
