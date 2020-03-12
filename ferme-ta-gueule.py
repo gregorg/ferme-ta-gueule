@@ -154,6 +154,8 @@ class FtgShell(cmd.Cmd):
         self.event.set()
         return True
 
+    def emptyline(self):
+        pass
 
 class Ftg:
     MAX_PACKETS = 1000
