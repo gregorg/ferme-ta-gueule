@@ -67,7 +67,7 @@ class TimePrecisionException(Exception): pass
 
 
 class FtgShell(cmd.Cmd):
-    prompt = '(ftg) '
+    prompt = '🚨 '
 
     def __init__(self, ftg, event):
         super().__init__()
@@ -97,6 +97,13 @@ class FtgShell(cmd.Cmd):
     def do_index(self, arg):
         """set index"""
         self.ftg.set_index(arg)
+
+    def do_id(self, arg):
+        doc = self.ftg.get_id(arg)
+        if doc:
+            print("👀 ID #%s :" % (arg,))
+            for k, v in doc['_source'].items():
+                print("%-14s: %s" % (k, v))
 
     def do_from(self, arg):
         """from "12" seconds or "3h" hours"""
