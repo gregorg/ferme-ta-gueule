@@ -645,6 +645,7 @@ if __name__ == '__main__':
     else:
         ftg.set_from(int(time.time()) - 60)
 
+    ftg.prepare()
     if args.grep:
         ftg.grep(args.grep)
 
