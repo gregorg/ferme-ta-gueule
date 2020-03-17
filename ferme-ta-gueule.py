@@ -17,7 +17,7 @@ import argparse
 # Force elasticsearch package version
 import pkg_resources
 
-pkg_resources.require("elasticsearch>=6.3.1")
+pkg_resources.require("elasticsearch>=7.5.0")
 import elasticsearch
 
 from pprint import pprint
@@ -209,13 +209,13 @@ class Ftg:
 
     def set_index(self, index):
         self.es_index = index
-        ftg.logger.info("[%s] %d logs in ElasticSearch index %s", self.url, self.es.count(self.es_index)['count'],
+        ftg.logger.info("[%s] %d logs in ElasticSearch index %s", self.url, self.es.count(index=self.es_index)['count'],
                         self.es_index)
 
     def list(self):
         indices = []
         for index in self.es.indices.get("*"):
-            s = self.es.search(index, body={"query": {"bool": {"must": {"wildcard": {"program": "*"}}}}}, size=1)
+            s = self.es.search(body={"query": {"bool": {"must": {"wildcard": {"program": "*"}}}}}, index=index, size=1)
             if s['hits']['total']['value'] > 0:
                 indices.append(index)
         return indices
@@ -358,7 +358,7 @@ class Ftg:
                     try:
                         if maxp > 10000:
                             maxp = 10000
-                        s = self.es.search(self.es_index, body=self.query, sort="%s:asc" % self.datefield, size=maxp)
+                        s = self.es.search(body=self.query, sort="%s:asc" % self.datefield, index=self.es_index, size=maxp)
                     except elasticsearch.exceptions.ConnectionError:
                         self.logger.warning("ES connection error, retry in 1sec ...", exc_info=False)
                         time.sleep(1)
@@ -404,7 +404,7 @@ class Ftg:
                             if time.time() - self.laststats >= 60:
                                 self.laststats = time.time()
                                 try:
-                                    idx_count = self.es.count(self.es_index)['count']
+                                    idx_count = self.es.count(index=self.es_index)['count']
                                     statsmsg = 'STATS: %d logs, ' % idx_count
                                     for l in self.stats['levels'].keys():
                                         statsmsg += "%s=%d, " % (l, self.stats['levels'][l])
