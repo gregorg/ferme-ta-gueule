@@ -197,7 +197,7 @@ class Ftg:
         return {
             'progress': self.progress,
             'index': self.es_index,
-            'url': self.url,
+            'url': re.sub(r':[^/].*?@', ':******@', self.url),
             'now': self.now,
             'levels': self.levels,
             'query': self.query,
@@ -209,7 +209,7 @@ class Ftg:
 
     def set_index(self, index):
         self.es_index = index
-        ftg.logger.info("[%s] %d logs in ElasticSearch index %s", self.url, self.es.count(index=self.es_index)['count'],
+        ftg.logger.info("%d logs in ElasticSearch index %s", self.es.count(index=self.es_index)['count'],
                         self.es_index)
 
     def list(self):
