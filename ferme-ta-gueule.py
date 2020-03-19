@@ -163,6 +163,7 @@ class Ftg:
 
     def __init__(self, url, interval, progress):
         self.url = url
+        self.masked_url = re.sub(r':[^/].*?@', ':******@', self.url)
         self.interval = interval
         self.levels = None
         self.es_index = None
@@ -197,7 +198,7 @@ class Ftg:
         return {
             'progress': self.progress,
             'index': self.es_index,
-            'url': re.sub(r':[^/].*?@', ':******@', self.url),
+            'url': self.masked_url,
             'now': self.now,
             'levels': self.levels,
             'query': self.query,
@@ -209,7 +210,7 @@ class Ftg:
 
     def set_index(self, index):
         self.es_index = index
-        ftg.logger.info("%d logs in ElasticSearch index %s", self.es.count(index=self.es_index)['count'],
+        ftg.logger.info("[%s] %d logs in ElasticSearch index %s", self.masked_url, self.es.count(index=self.es_index)['count'],
                         self.es_index)
 
     def list(self):
