@@ -266,8 +266,8 @@ class Ftg:
         except KeyError:
             pass
 
-    def grep(self, grep):
-        grep = self.pattern_to_es(grep)
+    def grep(self, pattern):
+        grep = self.pattern_to_es(pattern)
         try:
             self.query['query']['bool']['must'].append({'query_string': {'fields': ['msg'], 'query': grep}})
         except KeyError:
@@ -338,7 +338,6 @@ class Ftg:
         self.shell_event = event
 
     def loop(self):
-        self.prepare()
         self.logger.debug("ES query: %s" % self.query)
         tty_columns = self.get_terminal_width()
         maxp = self.MAX_PACKETS
