@@ -629,6 +629,13 @@ if __name__ == '__main__':
         print(">>> Python 2 is deprecated, please use Python 3 <<<")
         sys.exit(2)
 
+    if args._from:
+        ftg.set_from(int(time.time()) - 3600 * args._from)
+    else:
+        ftg.set_from(int(time.time()) - 60)
+
+    ftg.prepare()
+
     if args.notice:
         ftg.set_min_level(logging.DEBUG)
     elif args.error:
@@ -640,12 +647,6 @@ if __name__ == '__main__':
     elif args.fatal:
         ftg.set_level(logging.CRITICAL)
 
-    if args._from:
-        ftg.set_from(int(time.time()) - 3600 * args._from)
-    else:
-        ftg.set_from(int(time.time()) - 60)
-
-    ftg.prepare()
     if args.grep:
         ftg.grep(args.grep)
 
