@@ -319,11 +319,16 @@ class Ftg:
 
     def get_terminal_width(self):
         try:
-            tty_rows, tty_columns = os.popen('stty size', 'r').read().split()
+            stty = os.popen('stty size', 'r')
+            tty_rows, tty_columns = stty.read().split()
             return int(tty_columns)
         except:
             self.logger.warning("Unable to guess terminal size")
             return False
+        finally:
+            try:
+                stty.close()
+            except: pass
 
     def get_datetime(self, field):
         # 2016-06-03T12:02:53+0000
