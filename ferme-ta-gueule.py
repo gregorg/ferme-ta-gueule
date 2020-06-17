@@ -138,15 +138,15 @@ class FtgShell(cmd.Cmd):
     def do_level(self, arg):
         """set level to: notice|error|warn|info|fatal"""
         if arg == 'notice':
-            ftg.set_level(logging.DEBUG)
+            self.ftg.set_level(logging.DEBUG)
         elif arg == 'error':
-            ftg.set_min_level(logging.ERROR)
+            self.ftg.set_min_level(logging.ERROR)
         elif arg == 'warn':
-            ftg.set_min_level(logging.WARNING)
+            self.ftg.set_min_level(logging.WARNING)
         elif arg == 'info':
-            ftg.set_min_level(logging.INFO)
+            self.ftg.set_min_level(logging.INFO)
         elif arg == 'fatal':
-            ftg.set_level(logging.CRITICAL)
+            self.ftg.set_level(logging.CRITICAL)
         else:
             print("Log level unknown")
 
@@ -154,6 +154,14 @@ class FtgShell(cmd.Cmd):
         """exit"""
         self.event.set()
         return True
+    
+    def do_pause(self, arg):
+        """pause"""
+        self.ftg.pause()
+
+    def do_resume(self, arg):
+        """resume"""
+        self.ftg.resume()
 
     def emptyline(self):
         pass
@@ -177,6 +185,7 @@ class Ftg:
         self.progress = progress
         self.query_ids = []
         self.query = {}
+        self.pause_event = threading.Event()
 
         self.es = elasticsearch.Elasticsearch(
             self.url,
@@ -342,7 +351,13 @@ class Ftg:
 
     def set_shell_event(self, event):
         self.shell_event = event
+        
+    def pause(self):
+        self.pause_event.set()
 
+    def resume(self):
+        self.pause_event.clear()
+        
     def loop(self):
         self.logger.debug("ES query: %s" % self.query)
         tty_columns = self.get_terminal_width()
@@ -354,6 +369,9 @@ class Ftg:
                 try:
                     if self.shell_event.is_set():
                         break
+                    if self.pause_event.is_set():
+                        time.sleep(0.2)
+                        continue
                     # sys.stdout.write('#')
                     # sys.stdout.flush()
                     if isinstance(self.now, int):
