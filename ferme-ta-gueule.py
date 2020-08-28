@@ -122,6 +122,10 @@ class FtgShell(cmd.Cmd):
         """add a host"""
         self.ftg.host(arg)
 
+    def do_purge(self, arg):
+        """purge logs"""
+        self.ftg.purge()
+
     def do_tag(self, arg):
         """add a tag"""
         self.ftg.tag(arg)
@@ -221,6 +225,57 @@ class Ftg:
         self.es_index = index
         ftg.logger.info("[%s] %d logs in ElasticSearch index %s", self.masked_url, self.es.count(index=self.es_index)['count'],
                         self.es_index)
+
+    def purge(self):
+        try:
+            cleanup = self.es.delete_by_query(
+                index=self.es_index,
+                body={"query": {"range": {"date": {"lt": "now-30d"}}}},
+            )
+            if cleanup['deleted'] > 0:
+                ftg.logger.info("%s: %d logs deleted (PURGED).", self.es_index, cleanup['deleted'])
+            # search TTLs
+            search_ttls = self.es.search(index=self.es_index,
+                                         body={"size": 0, "aggs": {"distinct_ttl": {"terms": {"field": "ttl"}}}})
+            # for each TTLs, delete by query
+            for res_ttl in search_ttls['aggregations']['distinct_ttl']['buckets']:
+                ttl = res_ttl['key']
+                matches = re.search(r'(\d+)([dh])', ttl)
+                ttl_in_sec = None
+                try:
+                    ttl_in_sec = int(ttl)
+                except ValueError:
+                    pass
+                if matches:
+                    if matches.group(2) == "d":
+                        ttl_in_sec = int(matches.group(1)) * 86400
+                    elif matches.group(2) == "h":
+                        ttl_in_sec = int(matches.group(1)) * 3600
+                    ftg.logger.debug("TTL is %d%s -> %d", int(matches.group(1)), matches.group(2), ttl_in_sec)
+
+                ftg.logger.debug("Cleaning up %s: %s (%ds)", self.es_index, ttl, ttl_in_sec)
+
+                cleanup = self.es.delete_by_query(
+                    index=self.es_index,
+                    body={"query":
+                        {
+                            "bool": {
+                                "must": [
+                                    {"range": {"date": {"lt": int((time.time() - ttl_in_sec) * 1000)}}},
+                                    {"match": {"ttl": ttl}}
+                                ]
+                            }}
+                    }
+                )
+                if cleanup['deleted'] > 0:
+                    ftg.logger.info("%s: %d logs deleted.", self.es_index, cleanup['deleted'])
+
+        except elasticsearch.exceptions.ConnectionError:
+            ftg.logger.warning("Unable to cleanup %s: not connected", self.es_index, exc_info=False)
+        except elasticsearch.exceptions.ConflictError:
+            ftg.logger.warning("%s: ES conflict error in cleanup", self.es_index, exc_info=True)
+        except Exception as e:
+            ftg.logger.warning("Unable to cleanup %s", self.es_index, exc_info=True)
 
     def list(self):
         indices = []
