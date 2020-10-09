@@ -676,14 +676,20 @@ if __name__ == '__main__':
         try:
             os.chdir(os.path.dirname(os.path.abspath(sys.argv[0])))
             requirements_hash = None
+
             with open("requirements.txt", 'rb') as f:
                 data = f.read()
                 requirements_hash = hashlib.md5(data).hexdigest()
+                print("requirements.txt hash: %s"%requirements_hash)
+
             subprocess.run(["/usr/bin/git", "pull", "origin", "master"], check=True)
+
             with open("requirements.txt", 'rb') as f:
                 data = f.read()
+                print("requirements.txt hash: %s"%hashlib.md5(data).hexdigest())
                 if requirements_hash != hashlib.md5(data).hexdigest():
                     subprocess.run(["pip3", "install", "--user", "-r", "requirements.txt"], check=True)
+
             os.chdir(oldcwd)
             sys.argv.append("--no-update")
             os.execv(sys.argv[0], sys.argv)
