@@ -11,7 +11,7 @@ import subprocess
 import cmd
 import threading
 import re
-
+import hashlib
 import argparse
 
 # Force elasticsearch package version
@@ -675,7 +675,15 @@ if __name__ == '__main__':
         oldcwd = os.getcwd()
         try:
             os.chdir(os.path.dirname(os.path.abspath(sys.argv[0])))
-            subprocess.run(["/usr/bin/git", "pull", "origin", "master"])
+            requirements_hash = None
+            with open("requirements.txt", 'rb') as f:
+                data = f.read()
+                requirements_hash = hashlib.md5(data).hexdigest()
+            subprocess.run(["/usr/bin/git", "pull", "origin", "master"], check=True)
+            with open("requirements.txt", 'rb') as f:
+                data = f.read()
+                if requirements_hash != hashlib.md5(data).hexdigest():
+                    subprocess.run(["pip3", "install", "--user", "-r", "requirements.txt"], check=True)
             os.chdir(oldcwd)
             sys.argv.append("--no-update")
             os.execv(sys.argv[0], sys.argv)
