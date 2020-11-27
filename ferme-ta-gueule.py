@@ -13,6 +13,7 @@ import threading
 import re
 import hashlib
 import argparse
+import signal
 
 # Force elasticsearch package version
 import pkg_resources
@@ -73,6 +74,14 @@ class FtgShell(cmd.Cmd):
         super().__init__()
         self.event = event
         self.ftg = ftg
+        signal.signal(signal.SIGINT, handler=self._ctrl_c_handler)
+
+
+    def _ctrl_c_handler(self, signal, frame):
+        if self.ftg.is_paused():
+            self.do_q(None)
+        else:
+            self.do_pause(None)
 
     def do_enable(self, arg):
         """enable "progress\""""
@@ -162,12 +171,14 @@ class FtgShell(cmd.Cmd):
     def do_pause(self, arg):
         """pause"""
         self.ftg.pause()
+        print("PAUSED")
 
     def do_resume(self, arg):
         """resume"""
         self.ftg.resume()
 
     def emptyline(self):
+        self.ftg.resume()
         pass
 
 class Ftg:
@@ -412,6 +423,9 @@ class Ftg:
 
     def resume(self):
         self.pause_event.clear()
+
+    def is_paused(self):
+        return self.pause_event.is_set()
         
     def loop(self):
         self.logger.debug("ES query: %s" % self.query)
@@ -424,7 +438,7 @@ class Ftg:
                 try:
                     if self.shell_event.is_set():
                         break
-                    if self.pause_event.is_set():
+                    if self.is_paused():
                         time.sleep(0.2)
                         continue
                     # sys.stdout.write('#')
