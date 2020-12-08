@@ -181,6 +181,9 @@ class FtgShell(cmd.Cmd):
         self.ftg.resume()
         pass
 
+    def default(self, arg):
+        self.do_id(arg)
+
 class Ftg:
     MAX_PACKETS = 1000
 
@@ -630,7 +633,7 @@ class Ftg:
                 except TimePrecisionException:
                     time.sleep(1)
         except KeyboardInterrupt:
-            pass
+            self.shell_event.set()
 
 
 class ColoredFormatter(logging.Formatter):  # {{{
