@@ -705,7 +705,7 @@ if __name__ == '__main__':
                 data = f.read()
                 print("requirements.txt hash: %s"%hashlib.md5(data).hexdigest())
                 if requirements_hash != hashlib.md5(data).hexdigest():
-                    subprocess.run(["pip3", "install", "--user", "-r", "requirements.txt"], check=True)
+                    subprocess.run(["pip3", "install", "-U", "--user", "-r", "requirements.txt"], check=True)
 
             os.chdir(oldcwd)
             sys.argv.append("--no-update")
