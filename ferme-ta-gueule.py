@@ -213,6 +213,7 @@ class Ftg:
         )
 
         logging.getLogger('elasticsearch').setLevel(logging.WARNING)
+        #logging.getLogger('elasticsearch.trace').setLevel(logging.DEBUG)
         loghandler = logging.StreamHandler(sys.stdout)
         # loghandler.setFormatter(ColoredFormatter())
         self.logger = logging.getLogger('logs')
@@ -294,9 +295,14 @@ class Ftg:
     def list(self):
         indices = []
         for index in self.es.indices.get("*"):
-            s = self.es.search(body={"query": {"bool": {"must": {"wildcard": {"program": "*"}}}}}, index=index, size=1)
-            if s['hits']['total']['value'] > 0:
-                indices.append(index)
+            try:
+                s = self.es.search(body={"query": {"bool": {"must": {"wildcard": {"program": "*"}}}}}, index=index, size=1)
+                if s['hits']['total']['value'] > 0:
+                    indices.append(index)
+            except elasticsearch.exceptions.AuthorizationException:
+                pass
+            except Exception as e:
+                print(str(e))
         return indices
 
     def get_id(self, id):
