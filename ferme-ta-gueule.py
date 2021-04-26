@@ -133,11 +133,14 @@ class FtgShell(cmd.Cmd):
 
     def do_purge(self, arg):
         """purge logs"""
-        self.ftg.purge()
+        if arg == 'all':
+            self.ftg.purgeall()
+        else:
+            self.ftg.purge()
 
-    def do_purgeall(self, arg):
-        """purge ALL logs (from all indices)"""
-        self.ftg.purgeall()
+    def do_stats(self, arg):
+        """indices stats"""
+        self.ftg.es_stats(arg)
 
     def do_tag(self, arg):
         """add a tag"""
@@ -245,6 +248,23 @@ class Ftg:
         ftg.logger.info("[%s] %d logs in ElasticSearch index %s", self.masked_url, self.es.count(index=self.es_index)['count'],
                         self.es_index)
 
+    def es_stats(self, indices):
+        if indices == 'all':
+            indices = self.list()
+        elif indices == '':
+            indices = (self.es_index,)
+        else:
+            indices = indices.split(",")
+
+        for ind in indices:
+            ftg.logger.info("Index: %s", ind)
+            s = self.es.indices.stats(index=ind)
+            ftg.logger.info("\t- docs: %d", s['_all']['primaries']['docs']['count'])
+            ftg.logger.info("\t- deleted: %d", s['_all']['primaries']['docs']['deleted'])
+            ftg.logger.info("\t- size: %dMB", s['_all']['primaries']['store']['size_in_bytes']/1024/1024)
+            #print(s['_all']['primaries'])
+
+
     def purge(self, indice=None):
         if indice is None:
             indice = self.es_index
@@ -294,9 +314,12 @@ class Ftg:
                 if cleanup['deleted'] > 0:
                     ftg.logger.info("%s: %d logs deleted.", indice, cleanup['deleted'])
                 self.es.indices.refresh(index=indice)
+            ftg.logger.debug("Force merge")
+            self.es.indices.forcemerge(index=indice, only_expunge_deletes=True, request_timeout=300)
+            self.es.indices.forcemerge(index=indice, request_timeout=300)
 
         except elasticsearch.exceptions.ConnectionError:
-            ftg.logger.warning("Unable to cleanup %s: not connected", indice, exc_info=False)
+            ftg.logger.warning("Unable to cleanup %s: not connected", indice, exc_info=True)
         except elasticsearch.exceptions.ConflictError:
             ftg.logger.warning("%s: ES conflict error in cleanup", indice, exc_info=True)
         except Exception as e:
