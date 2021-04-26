@@ -135,6 +135,8 @@ class FtgShell(cmd.Cmd):
         """purge logs"""
         if arg == 'all':
             self.ftg.purgeall()
+        elif arg == 'bofh':
+            self.ftg.purge(bofh=True)
         else:
             self.ftg.purge()
 
@@ -265,7 +267,7 @@ class Ftg:
             #print(s['_all']['primaries'])
 
 
-    def purge(self, indice=None):
+    def purge(self, indice=None, bofh=False):
         if indice is None:
             indice = self.es_index
         try:
@@ -282,34 +284,42 @@ class Ftg:
             search_ttls = self.es.search(index=indice,
                                          body={"size": 0, "aggs": {"distinct_ttl": {"terms": {"field": "ttl"}}}})
             # for each TTLs, delete by query
-            for res_ttl in search_ttls['aggregations']['distinct_ttl']['buckets']:
-                ttl = res_ttl['key']
-                matches = re.search(r'(\d+)([dh])', ttl)
-                ttl_in_sec = None
-                try:
-                    ttl_in_sec = int(ttl)
-                except ValueError:
-                    pass
-                if matches:
-                    if matches.group(2) == "d":
-                        ttl_in_sec = int(matches.group(1)) * 86400
-                    elif matches.group(2) == "h":
-                        ttl_in_sec = int(matches.group(1)) * 3600
-                    ftg.logger.debug("TTL is %d%s -> %d", int(matches.group(1)), matches.group(2), ttl_in_sec)
+            ttls = []
+            if bofh:
+                ttls.append(("all", 86400))
+            else:
+                for res_ttl in search_ttls['aggregations']['distinct_ttl']['buckets']:
+                    ttl = res_ttl['key']
+                    matches = re.search(r'(\d+)([dh])', ttl)
+                    ttl_in_sec = None
+                    try:
+                        ttl_in_sec = int(ttl)
+                    except ValueError:
+                        pass
+                    if matches:
+                        if matches.group(2) == "d":
+                            ttl_in_sec = int(matches.group(1)) * 86400
+                        elif matches.group(2) == "h":
+                            ttl_in_sec = int(matches.group(1)) * 3600
+                        ttls.append((ttl, ttl_in_sec))
 
+            for ttl, ttl_in_sec in ttls:
                 ftg.logger.debug("Cleaning up %s: %s (%ds)", indice, ttl, ttl_in_sec)
-
+                query = {"query":
+                    {
+                        "bool": {
+                            "must": [
+                                {"range": {"date": {"lt": int((time.time() - ttl_in_sec) * 1000)}}},
+                            ]
+                        }
+                    }
+                }
+                if ttl != "all":
+                    query['query']['bool']['must'].append({'match': {"ttl": ttl}})
                 cleanup = self.es.delete_by_query(
                     index=indice,
-                    body={"query":
-                        {
-                            "bool": {
-                                "must": [
-                                    {"range": {"date": {"lt": int((time.time() - ttl_in_sec) * 1000)}}},
-                                    {"match": {"ttl": ttl}}
-                                ]
-                            }}
-                    }
+                    body=query,
+                    request_timeout=300
                 )
                 if cleanup['deleted'] > 0:
                     ftg.logger.info("%s: %d logs deleted.", indice, cleanup['deleted'])
