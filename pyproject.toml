@@ -29,10 +29,6 @@ requests = "^2.26.0"
 pre-commit = "^2.13.0"
 black = "^21.7b0"
 
-[[tool.poetry.source]]
-name = "libs"
-url = "https://gitlab.easyflirt.com/api/v4/projects/484/packages/pypi/simple"
-
 [build-system]
 requires = ["poetry-core>=1.0.0"]
 build-backend = "poetry.core.masonry.api"
