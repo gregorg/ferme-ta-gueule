@@ -2,21 +2,21 @@ FROM debian:buster-slim
 
 RUN apt-get update \
     && apt-get -y dist-upgrade \
-    && apt-get -y --no-install-recommends install python3 python3-pip \
-    && apt-get clean
+    && apt-get -y --no-install-recommends install python3 python3-pip curl \
+    && apt-get clean \
+    && ln -s /usr/bin/python3 /usr/bin/python
+
+RUN curl -sSL https://raw.githubusercontent.com/python-poetry/poetry/master/get-poetry.py | POETRY_HOME=/usr/local/poetry python3 \
+    && ln -s /usr/local/poetry/bin/poetry /usr/bin/poetry \ 
+    && ls -l /usr/bin/poetry /usr/local/poetry/bin/poetry
 
 WORKDIR /scripts
 
-RUN python3 -m pip install -U pip setuptools
-ENTRYPOINT ["/usr/bin/python3", "./ferme-ta-gueule.py"]
+ENTRYPOINT ["poetry", "run", "ftg"]
 
 # minimize layers updates
-COPY requirements.txt .
-RUN python3 -m pip install -U pip \
-    && python3 -m pip install -r requirements.txt --user
+COPY poetry.* *.toml ./
+RUN poetry install --no-root
 
 # should be last:
 COPY . .
-
-
-

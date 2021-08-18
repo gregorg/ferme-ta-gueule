@@ -247,7 +247,7 @@ class Ftg:
 
     def set_index(self, index):
         self.es_index = index
-        ftg.logger.info("[%s] %d logs in ElasticSearch index %s", self.masked_url, self.es.count(index=self.es_index)['count'],
+        self.logger.info("[%s] %d logs in ElasticSearch index %s", self.masked_url, self.es.count(index=self.es_index)['count'],
                         self.es_index)
 
     def es_stats(self, indices):
@@ -259,11 +259,11 @@ class Ftg:
             indices = indices.split(",")
 
         for ind in indices:
-            ftg.logger.info("Index: %s", ind)
+            self.logger.info("Index: %s", ind)
             s = self.es.indices.stats(index=ind)
-            ftg.logger.info("\t- docs: %d", s['_all']['primaries']['docs']['count'])
-            ftg.logger.info("\t- deleted: %d", s['_all']['primaries']['docs']['deleted'])
-            ftg.logger.info("\t- size: %dMB", s['_all']['primaries']['store']['size_in_bytes']/1024/1024)
+            self.logger.info("\t- docs: %d", s['_all']['primaries']['docs']['count'])
+            self.logger.info("\t- deleted: %d", s['_all']['primaries']['docs']['deleted'])
+            self.logger.info("\t- size: %dMB", s['_all']['primaries']['store']['size_in_bytes']/1024/1024)
             #print(s['_all']['primaries'])
 
 
@@ -276,7 +276,7 @@ class Ftg:
                 body={"query": {"range": {"date": {"lt": "now-30d"}}}},
             )
             if cleanup['deleted'] > 0:
-                ftg.logger.info("%s: %d logs deleted (PURGED).", indice, cleanup['deleted'])
+                self.logger.info("%s: %d logs deleted (PURGED).", indice, cleanup['deleted'])
             
             self.es.indices.refresh(index=indice)
 
@@ -304,7 +304,7 @@ class Ftg:
                         ttls.append((ttl, ttl_in_sec))
 
             for ttl, ttl_in_sec in ttls:
-                ftg.logger.debug("Cleaning up %s: %s (%ds)", indice, ttl, ttl_in_sec)
+                self.logger.debug("Cleaning up %s: %s (%ds)", indice, ttl, ttl_in_sec)
                 query = {"query":
                     {
                         "bool": {
@@ -322,18 +322,18 @@ class Ftg:
                     request_timeout=300
                 )
                 if cleanup['deleted'] > 0:
-                    ftg.logger.info("%s: %d logs deleted.", indice, cleanup['deleted'])
+                    self.logger.info("%s: %d logs deleted.", indice, cleanup['deleted'])
                 self.es.indices.refresh(index=indice)
-            ftg.logger.debug("Force merge")
+            self.logger.debug("Force merge")
             self.es.indices.forcemerge(index=indice, only_expunge_deletes=True, request_timeout=300)
             self.es.indices.forcemerge(index=indice, request_timeout=300)
 
         except elasticsearch.exceptions.ConnectionError:
-            ftg.logger.warning("Unable to cleanup %s: not connected", indice, exc_info=True)
+            self.logger.warning("Unable to cleanup %s: not connected", indice, exc_info=True)
         except elasticsearch.exceptions.ConflictError:
-            ftg.logger.warning("%s: ES conflict error in cleanup", indice, exc_info=True)
+            self.logger.warning("%s: ES conflict error in cleanup", indice, exc_info=True)
         except Exception as e:
-            ftg.logger.warning("Unable to cleanup %s", indice, exc_info=True)
+            self.logger.warning("Unable to cleanup %s", indice, exc_info=True)
 
     def purgeall(self):
         for indice in self.list():
@@ -483,7 +483,7 @@ class Ftg:
     def is_paused(self):
         return self.pause_event.is_set()
         
-    def loop(self):
+    def loop(self, short, full):
         self.logger.debug("ES query: %s" % self.query)
         tty_columns = self.get_terminal_width()
         maxp = self.MAX_PACKETS
@@ -614,9 +614,9 @@ class Ftg:
                                     logmsg = ids['_source']['msg']
                                 except KeyError:
                                     logmsg = ids['_source']['message']
-                                if args.short:
+                                if short:
                                     logmsg = logmsg[:200]
-                                elif not args.full:
+                                elif not full:
                                     logmsg = " ".join(logmsg.split("\n")[:2])
 
                                 color = COLORS[logging.getLevelName(lvl)]
@@ -651,7 +651,7 @@ class Ftg:
                                     msg += "(%s) %s >> " % (_id, ids['_source']['program'])
                                 except KeyError:
                                     msg += "(%s) %s >> " % (_id, ids['_source']['context']['user'])
-                                if not args.full and not args.short and tty_columns:
+                                if not full and not short and tty_columns:
                                     logmsg = logmsg.replace("\t", "  ")[:(tty_columns - len(msg) + 44)]
                                 msg += termcolor.colored(logmsg, color, on_color, color_attr)
 
@@ -714,7 +714,7 @@ class ColoredFormatter(logging.Formatter):  # {{{
 
 # }}}
 
-if __name__ == '__main__':
+def main():
     parser = argparse.ArgumentParser()
     parser.add_argument("--full", help="Do not truncate output", action="store_true")
     parser.add_argument("--short", help="truncate output to 200 chars (default to terminal size)", action="store_true")
@@ -736,7 +736,7 @@ if __name__ == '__main__':
     parser.add_argument("--interval", help="interval between queries, default 1s", action="store", type=float,
                         default=1)
     parser.add_argument("--url", help="Use another ES", action="store", default=url)
-    parser.add_argument("--no-update", help="Update", action="store_true", default=False)
+    parser.add_argument("--no-update", help="Update", action="store_true", default=True)
     parser.add_argument("--list", help="List indices", action="store_true", default=False)
     args = parser.parse_args()
 
@@ -745,20 +745,20 @@ if __name__ == '__main__':
         oldcwd = os.getcwd()
         try:
             os.chdir(os.path.dirname(os.path.abspath(sys.argv[0])))
-            requirements_hash = None
+            poetry_lock_hash = None
 
-            with open("requirements.txt", 'rb') as f:
+            with open("poetry.lock", 'rb') as f:
                 data = f.read()
-                requirements_hash = hashlib.md5(data).hexdigest()
-                print("requirements.txt hash: %s"%requirements_hash)
+                poetry_lock_hash = hashlib.md5(data).hexdigest()
+                print("poetry.lock hash: %s"%poetry_lock_hash)
 
             subprocess.run(["/usr/bin/git", "pull", "origin", "master"], check=True)
 
-            with open("requirements.txt", 'rb') as f:
+            with open("poetry.lock", 'rb') as f:
                 data = f.read()
-                print("requirements.txt hash: %s"%hashlib.md5(data).hexdigest())
-                if requirements_hash != hashlib.md5(data).hexdigest():
-                    subprocess.run(["pip3", "install", "-U", "--user", "-r", "requirements.txt"], check=True)
+                print("poetry.lock hash: %s"%hashlib.md5(data).hexdigest())
+                if poetry_lock_hash != hashlib.md5(data).hexdigest():
+                    subprocess.run(["poetry", "install"], check=True)
 
             os.chdir(oldcwd)
             sys.argv.append("--no-update")
@@ -830,4 +830,8 @@ if __name__ == '__main__':
     shell_thread.daemon = True
     shell_thread.start()
     ftg.set_shell_event(shell_event)
-    ftg.loop()
+    ftg.loop(args.short, args.full)
+
+
+if __name__ == '__main__':
+    main()
