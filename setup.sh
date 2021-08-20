@@ -16,4 +16,4 @@ echo
 echo
 echo
 echo "✓ OK ! Now run it with: "
-echo "🦄 poetry run ftg"
+echo "🦄 source ~/.poetry/env && poetry run ftg"
