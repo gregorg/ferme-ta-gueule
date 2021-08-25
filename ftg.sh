@@ -3,4 +3,4 @@
 set -e
 
 ./setup.sh
-poetry run ftg
+poetry run ftg $@
