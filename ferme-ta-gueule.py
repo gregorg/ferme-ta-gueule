@@ -191,7 +191,10 @@ class FtgShell(cmd.Cmd):
         pass
 
     def default(self, arg):
-        self.do_id(arg)
+        if arg.startswith('/'):
+            self.ftg.grep(arg[1:])
+        else:
+            self.do_id(arg)
 
 class Ftg:
     MAX_PACKETS = 1000
