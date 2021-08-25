@@ -4,12 +4,15 @@ set -e
 
 git pull
 
-if ! which poetry >/dev/null
+if [ -e ~/.poetry/env ]
+then
+    source ~/.poetry/env
+elif ! which poetry >/dev/null
 then
     curl -sSL https://raw.githubusercontent.com/python-poetry/poetry/master/get-poetry.py | python3
+    source ~/.poetry/env
 fi
 
-source ~/.poetry/env
 poetry install
 
 echo
