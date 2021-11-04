@@ -655,7 +655,7 @@ class Ftg:
                                 except KeyError:
                                     msg += "(%s) %s >> " % (_id, ids['_source']['context']['user'])
                                 if not full and not short and tty_columns:
-                                    logmsg = logmsg.replace("\t", "  ")[:(tty_columns - len(msg) + 44)]
+                                    logmsg = logmsg.replace("\t", "  ")[:(tty_columns - len(msg) + 39)]
                                 msg += termcolor.colored(logmsg, color, on_color, color_attr)
 
                                 self.logger.log(lvl, msg)
