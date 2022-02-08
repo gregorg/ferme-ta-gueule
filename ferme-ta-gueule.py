@@ -25,57 +25,58 @@ from pprint import pprint
 
 # https://urllib3.readthedocs.org/en/latest/security.html#insecureplatformwarning
 import urllib3
+
 # urllib3.disable_warnings()
 import logging
 
 logging.captureWarnings(True)
 
-url = 'https://elasticsearch.easyflirt.com:443'
+url = "https://elasticsearch.easyflirt.com:443"
 LEVELSMAP = {
-    'DEBUG': logging.DEBUG,
-    'INFO': logging.INFO,
-    'WARN': logging.WARNING,
-    'warning': logging.WARNING,
-    'WARNING': logging.WARNING,
-    'err': logging.ERROR,
-    'alert': logging.ERROR,
-    'ERROR': logging.ERROR,
-    'ALERT': logging.CRITICAL,
-    'FATAL': logging.CRITICAL,
-    'CRITICAL': logging.CRITICAL,
-    'EMERGENCY': logging.CRITICAL,
+    "DEBUG": logging.DEBUG,
+    "INFO": logging.INFO,
+    "WARN": logging.WARNING,
+    "warning": logging.WARNING,
+    "WARNING": logging.WARNING,
+    "err": logging.ERROR,
+    "alert": logging.ERROR,
+    "ERROR": logging.ERROR,
+    "ALERT": logging.CRITICAL,
+    "FATAL": logging.CRITICAL,
+    "CRITICAL": logging.CRITICAL,
+    "EMERGENCY": logging.CRITICAL,
 }
 COLORS = {
-    'DEBUG': 'white',
-    'INFO': 'cyan',
-    'WARNING': 'yellow',
-    'ERROR': 'white',
-    'CRITICAL': 'yellow',
+    "DEBUG": "white",
+    "INFO": "cyan",
+    "WARNING": "yellow",
+    "ERROR": "white",
+    "CRITICAL": "yellow",
 }
 ON_COLORS = {
-    'CRITICAL': 'on_red',
-    'ERROR': 'on_red',
+    "CRITICAL": "on_red",
+    "ERROR": "on_red",
 }
 COLORS_ATTRS = {
-    'CRITICAL': ('bold',),
-    'WARNING': ('bold',),
-    'ERROR': ('bold',),
-    'DEBUG': ('dark',),
+    "CRITICAL": ("bold",),
+    "WARNING": ("bold",),
+    "ERROR": ("bold",),
+    "DEBUG": ("dark",),
 }
 
 
-class TimePrecisionException(Exception): pass
+class TimePrecisionException(Exception):
+    pass
 
 
 class FtgShell(cmd.Cmd):
-    prompt = '🚨 '
+    prompt = "🚨 "
 
     def __init__(self, ftg, event):
         super().__init__()
         self.event = event
         self.ftg = ftg
         signal.signal(signal.SIGINT, handler=self._ctrl_c_handler)
-
 
     def _ctrl_c_handler(self, signal, frame):
         if self.ftg.is_paused():
@@ -84,24 +85,25 @@ class FtgShell(cmd.Cmd):
             self.do_pause(None)
 
     def do_enable(self, arg):
-        """enable "progress\""""
-        if arg == 'progress':
+        """enable "progress\" """
+        if arg == "progress":
             self.ftg.set_progress(True)
 
     def do_disable(self, arg):
-        """disable "progress\""""
-        if arg == 'progress':
+        """disable "progress\" """
+        if arg == "progress":
             self.ftg.set_progress(False)
 
     def do_debug(self, arg):
-        'debug'
+        "debug"
         debug = self.ftg.get_debug()
         pprint(debug)
 
     def do_ls(self, arg):
         """list available indices"""
+        print("|--- index name ---|--- status ---|")
         for ind in self.ftg.list():
-            print("- " + ind)
+            print("| {0[0]:^16} | {0[1]:^12} |".format(ind))
 
     def do_index(self, arg):
         """set index"""
@@ -112,14 +114,17 @@ class FtgShell(cmd.Cmd):
         doc = self.ftg.get_id(arg)
         if doc:
             print("👀 ID #%s :" % (arg,))
-            for k, v in doc['_source'].items():
+            for k, v in doc["_source"].items():
                 print("%-14s: %s" % (k, v))
 
     def do_from(self, arg):
         """from "12" seconds or "3h" hours"""
-        if 'h' in arg:
-            h = re.match(r'^\d+', arg).group(0)
+        if "h" in arg:
+            h = re.match(r"^\d+", arg).group(0)
             self.ftg.set_from(int(time.time()) - (int(h) * 3600))
+        elif "m" in arg:
+            m = re.match(r"^\d+", arg).group(0)
+            self.ftg.set_from(int(time.time()) - (int(m) * 60))
         else:
             self.ftg.set_from(int(time.time()) - int(arg))
 
@@ -130,15 +135,6 @@ class FtgShell(cmd.Cmd):
     def do_host(self, arg):
         """add a host"""
         self.ftg.host(arg)
-
-    def do_purge(self, arg):
-        """purge logs"""
-        if arg == 'all':
-            self.ftg.purgeall()
-        elif arg == 'bofh':
-            self.ftg.purge(bofh=True)
-        else:
-            self.ftg.purge()
 
     def do_stats(self, arg):
         """indices stats"""
@@ -159,15 +155,15 @@ class FtgShell(cmd.Cmd):
 
     def do_level(self, arg):
         """set level to: notice|error|warn|info|fatal"""
-        if arg == 'notice':
+        if arg == "notice":
             self.ftg.set_level(logging.DEBUG)
-        elif arg == 'error':
+        elif arg == "error":
             self.ftg.set_min_level(logging.ERROR)
-        elif arg == 'warn':
+        elif arg == "warn":
             self.ftg.set_min_level(logging.WARNING)
-        elif arg == 'info':
+        elif arg == "info":
             self.ftg.set_min_level(logging.INFO)
-        elif arg == 'fatal':
+        elif arg == "fatal":
             self.ftg.set_level(logging.CRITICAL)
         else:
             print("Log level unknown")
@@ -176,7 +172,7 @@ class FtgShell(cmd.Cmd):
         """exit"""
         self.event.set()
         return True
-    
+
     def do_pause(self, arg):
         """pause"""
         self.ftg.pause()
@@ -191,26 +187,27 @@ class FtgShell(cmd.Cmd):
         pass
 
     def default(self, arg):
-        if arg.startswith('/'):
+        if arg.startswith("/"):
             self.ftg.grep(arg[1:])
         else:
             self.do_id(arg)
+
 
 class Ftg:
     MAX_PACKETS = 1000
 
     def __init__(self, url, interval, progress):
         self.url = url
-        self.masked_url = re.sub(r':[^/].*?@', ':******@', self.url)
+        self.masked_url = re.sub(r":[^/].*?@", ":******@", self.url)
         self.interval = interval
         self.levels = None
         self.es_index = None
-        self.now = time.time() - 60
+        self.now = int((time.time() - 60) * 1000)
         self.last_timestamp = None
-        self.datefield = "timestamp"
+        self.datefield = "@timestamp"
         self.lasts = []
         self.shell_event = None
-        self.stats = {'levels': {}}
+        self.stats = {"levels": {}}
         self.laststats = time.time()
         self.progress = progress
         self.query_ids = []
@@ -221,14 +218,14 @@ class Ftg:
             self.url,
             use_ssl=("https://" in self.url),
             retry_on_timeout=True,
-            max_retries=0
+            max_retries=0,
         )
 
-        logging.getLogger('elasticsearch').setLevel(logging.WARNING)
-        #logging.getLogger('elasticsearch.trace').setLevel(logging.DEBUG)
+        logging.getLogger("elasticsearch").setLevel(logging.WARNING)
+        # logging.getLogger('elasticsearch.trace').setLevel(logging.DEBUG)
         loghandler = logging.StreamHandler(sys.stdout)
         # loghandler.setFormatter(ColoredFormatter())
-        self.logger = logging.getLogger('logs')
+        self.logger = logging.getLogger("logs")
         while len(self.logger.handlers) > 0:
             self.logger.removeHandler(self.logger.handlers[0])
         self.logger.addHandler(loghandler)
@@ -236,13 +233,13 @@ class Ftg:
 
     def get_debug(self):
         return {
-            'progress': self.progress,
-            'index': self.es_index,
-            'url': self.masked_url,
-            'now': self.now,
-            'levels': self.levels,
-            'query': self.query,
-            'last_timestamp': self.last_timestamp
+            "progress": self.progress,
+            "index": self.es_index,
+            "url": self.masked_url,
+            "now": self.now,
+            "levels": self.levels,
+            "query": self.query,
+            "last_timestamp": self.last_timestamp,
         }
 
     def set_progress(self, p):
@@ -250,105 +247,38 @@ class Ftg:
 
     def set_index(self, index):
         self.es_index = index
-        self.logger.info("[%s] %d logs in ElasticSearch index %s", self.masked_url, self.es.count(index=self.es_index)['count'],
-                        self.es_index)
+        self.logger.info(
+            "[%s] %d logs in ElasticSearch index %s",
+            self.masked_url,
+            self.es.count(index=self.es_index)["count"],
+            self.es_index,
+        )
 
     def es_stats(self, indices):
-        if indices == 'all':
+        if indices == "all":
             indices = self.list()
-        elif indices == '':
+        elif indices == "":
             indices = (self.es_index,)
         else:
             indices = indices.split(",")
 
         for ind in indices:
             self.logger.info("Index: %s", ind)
-            s = self.es.indices.stats(index=ind)
-            self.logger.info("\t- docs: %d", s['_all']['primaries']['docs']['count'])
-            self.logger.info("\t- deleted: %d", s['_all']['primaries']['docs']['deleted'])
-            self.logger.info("\t- size: %dMB", s['_all']['primaries']['store']['size_in_bytes']/1024/1024)
-            #print(s['_all']['primaries'])
-
-
-    def purge(self, indice=None, bofh=False):
-        if indice is None:
-            indice = self.es_index
-        try:
-            cleanup = self.es.delete_by_query(
-                index=indice,
-                body={"query": {"range": {"date": {"lt": "now-30d"}}}},
-            )
-            if cleanup['deleted'] > 0:
-                self.logger.info("%s: %d logs deleted (PURGED).", indice, cleanup['deleted'])
-            
-            self.es.indices.refresh(index=indice)
-
-            # search TTLs
-            search_ttls = self.es.search(index=indice,
-                                         body={"size": 0, "aggs": {"distinct_ttl": {"terms": {"field": "ttl"}}}})
-            # for each TTLs, delete by query
-            ttls = []
-            if bofh:
-                ttls.append(("all", 86400))
-            else:
-                for res_ttl in search_ttls['aggregations']['distinct_ttl']['buckets']:
-                    ttl = res_ttl['key']
-                    matches = re.search(r'(\d+)([dh])', ttl)
-                    ttl_in_sec = None
-                    try:
-                        ttl_in_sec = int(ttl)
-                    except ValueError:
-                        pass
-                    if matches:
-                        if matches.group(2) == "d":
-                            ttl_in_sec = int(matches.group(1)) * 86400
-                        elif matches.group(2) == "h":
-                            ttl_in_sec = int(matches.group(1)) * 3600
-                        ttls.append((ttl, ttl_in_sec))
-
-            for ttl, ttl_in_sec in ttls:
-                self.logger.debug("Cleaning up %s: %s (%ds)", indice, ttl, ttl_in_sec)
-                query = {"query":
-                    {
-                        "bool": {
-                            "must": [
-                                {"range": {"date": {"lt": int((time.time() - ttl_in_sec) * 1000)}}},
-                            ]
-                        }
-                    }
-                }
-                if ttl != "all":
-                    query['query']['bool']['must'].append({'match': {"ttl": ttl}})
-                cleanup = self.es.delete_by_query(
-                    index=indice,
-                    body=query,
-                    request_timeout=300
-                )
-                if cleanup['deleted'] > 0:
-                    self.logger.info("%s: %d logs deleted.", indice, cleanup['deleted'])
-                self.es.indices.refresh(index=indice)
-            self.logger.debug("Force merge")
-            self.es.indices.forcemerge(index=indice, only_expunge_deletes=True, request_timeout=300)
-            self.es.indices.forcemerge(index=indice, request_timeout=300)
-
-        except elasticsearch.exceptions.ConnectionError:
-            self.logger.warning("Unable to cleanup %s: not connected", indice, exc_info=True)
-        except elasticsearch.exceptions.ConflictError:
-            self.logger.warning("%s: ES conflict error in cleanup", indice, exc_info=True)
-        except Exception as e:
-            self.logger.warning("Unable to cleanup %s", indice, exc_info=True)
-
-    def purgeall(self):
-        for indice in self.list():
-            self.purge(indice)
+            s = self.es.indices.data_streams_stats(ind)
+            size = s["data_streams"][0]["store_size_bytes"]
+            self.logger.info("  - size: %dMB", size / 1024 / 1024)
 
     def list(self):
         indices = []
-        for index in self.es.indices.get("*"):
+        for index in self.es.indices.get_data_stream("*")["data_streams"]:
             try:
-                s = self.es.search(body={"query": {"bool": {"must": {"wildcard": {"program": "*"}}}}}, index=index, size=1)
-                if s['hits']['total']['value'] > 0:
-                    indices.append(index)
+                # filter on data streams
+                if (
+                    index["ilm_policy"] == "logs_policy"
+                    and not index["system"]
+                    and not index["hidden"]
+                ):
+                    indices.append((index["name"], index["status"]))
             except elasticsearch.exceptions.AuthorizationException:
                 pass
             except Exception as e:
@@ -359,7 +289,11 @@ class Ftg:
         tries = 1
         while True:
             try:
-                return self.es.get(index=self.es_index, id=id)
+                return self.es.search(
+                    body={"query": {"terms": {"_id": [id]}}},
+                    index=self.es_index,
+                    size=1,
+                )["hits"]["hits"][0]
                 break
             except elasticsearch.exceptions.NotFoundError:
                 if tries >= 4:
@@ -382,65 +316,107 @@ class Ftg:
         if self.levels:
             levels_query = {"bool": {"should": [], "minimum_should_match": 1}}
             for level in self.levels:
-                levels_query['bool']['should'].append({"match_phrase": {"level": level}})
+                levels_query["bool"]["should"].append(
+                    {"match_phrase": {"level": level}}
+                )
             try:
-                self.query['query']['bool']['must'].append(levels_query)
+                self.query["query"]["bool"]["must"].append(levels_query)
             except KeyError:
-                self.query['query']['bool']['must'] = [levels_query]
+                self.query["query"]["bool"]["must"] = [levels_query]
 
     def set_from(self, now):
-        self.now = now
+        self.now = int(now * 1000)
 
     def prepare(self):
-        self.query = {"query": {"bool": {"filter": {"range": {self.datefield: {"gte": self.now}}}}}}
+        self.query = {
+            "query": {
+                "bool": {"filter": {"range": {self.datefield: {"gte": self.now}}}}
+            }
+        }
         self.set_levels()
 
     def reset(self):
         try:
-            del self.query['query']['bool']['must']
+            del self.query["query"]["bool"]["must"]
         except KeyError:
             pass
 
     def grep(self, pattern):
         grep = self.pattern_to_es(pattern)
         try:
-            self.query['query']['bool']['must'].append({'query_string': {'fields': ['msg'], 'query': grep}})
+            self.query["query"]["bool"]["must"].append(
+                {"query_string": {"fields": ["msg"], "query": grep}}
+            )
         except KeyError:
-            self.query['query']['bool']['must'] = [({'query_string': {'fields': ['msg'], 'query': grep}})]
+            self.query["query"]["bool"]["must"] = [
+                ({"query_string": {"fields": ["msg"], "query": grep}})
+            ]
 
     def exclude(self, exclude):
         try:
-            self.query['query']['bool']['must_not'].append(
-                {'query_string': {'fields': ['msg'], 'query': self.pattern_to_es(exclude)}})
+            self.query["query"]["bool"]["must_not"].append(
+                {
+                    "query_string": {
+                        "fields": ["msg"],
+                        "query": self.pattern_to_es(exclude),
+                    }
+                }
+            )
         except KeyError:
-            self.query['query']['bool']['must_not'] = [
-                ({'query_string': {'fields': ['msg'], 'query': self.pattern_to_es(exclude)}})]
-        self.query['query']['bool']['must_not'].append({'query_string': {'fields': ['program'], 'query': exclude}})
+            self.query["query"]["bool"]["must_not"] = [
+                (
+                    {
+                        "query_string": {
+                            "fields": ["msg"],
+                            "query": self.pattern_to_es(exclude),
+                        }
+                    }
+                )
+            ]
+        self.query["query"]["bool"]["must_not"].append(
+            {"query_string": {"fields": ["program"], "query": exclude}}
+        )
 
     def program(self, program):
         try:
-            self.query['query']['bool']['must'].append({'query_string': {'fields': ['program'], 'query': program}})
+            self.query["query"]["bool"]["must"].append(
+                {"query_string": {"fields": ["program"], "query": program}}
+            )
         except KeyError:
-            self.query['query']['bool']['must'] = [({'query_string': {'fields': ['program'], 'query': program}})]
+            self.query["query"]["bool"]["must"] = [
+                ({"query_string": {"fields": ["program"], "query": program}})
+            ]
 
     def tag(self, tag):
         try:
-            self.query['query']['bool']['must'].append({'query_string': {'fields': ['msg'], 'query': "\t%s \-" % tag}})
+            self.query["query"]["bool"]["must"].append(
+                {"query_string": {"fields": ["msg"], "query": "\t%s \-" % tag}}
+            )
         except KeyError:
-            self.query['query']['bool']['must'] = [({'query_string': {'fields': ['msg'], 'query': "\t%s \-" % tag}})]
+            self.query["query"]["bool"]["must"] = [
+                ({"query_string": {"fields": ["msg"], "query": "\t%s \-" % tag}})
+            ]
 
     def host(self, host):
         try:
-            self.query['query']['bool']['must'].append({'query_string': {'fields': ['host'], 'query': host}})
+            self.query["query"]["bool"]["must"].append(
+                {"query_string": {"fields": ["host"], "query": host}}
+            )
         except KeyError:
-            self.query['query']['bool']['must'] = [({'query_string': {'fields': ['host'], 'query': host}})]
+            self.query["query"]["bool"]["must"] = [
+                ({"query_string": {"fields": ["host"], "query": host}})
+            ]
 
     def pattern_to_es(self, pattern):
-        if not pattern.startswith('/') and not pattern.startswith('*') and not pattern.endswith('*'):
-            pattern = '*' + pattern + '*'
-            return pattern.replace(" ", '* AND *')
+        if (
+            not pattern.startswith("/")
+            and not pattern.startswith("*")
+            and not pattern.endswith("*")
+        ):
+            pattern = "*" + pattern + "*"
+            return pattern.replace(" ", "* AND *")
         else:
-            return pattern.replace(" ", ' AND ')
+            return pattern.replace(" ", " AND ")
 
     def rebuild_query(self, oldfield, newfield):
         for k, v in self.query.items():
@@ -453,7 +429,7 @@ class Ftg:
 
     def get_terminal_width(self):
         try:
-            stty = os.popen('stty size', 'r')
+            stty = os.popen("stty size", "r")
             tty_rows, tty_columns = stty.read().split()
             return int(tty_columns)
         except:
@@ -462,7 +438,8 @@ class Ftg:
         finally:
             try:
                 stty.close()
-            except: pass
+            except:
+                pass
 
     def get_datetime(self, field):
         # 2016-06-03T12:02:53+0000
@@ -476,7 +453,7 @@ class Ftg:
 
     def set_shell_event(self, event):
         self.shell_event = event
-        
+
     def pause(self):
         self.pause_event.set()
 
@@ -485,7 +462,7 @@ class Ftg:
 
     def is_paused(self):
         return self.pause_event.is_set()
-        
+
     def loop(self, short, full):
         self.logger.debug("ES query: %s" % self.query)
         tty_columns = self.get_terminal_width()
@@ -502,76 +479,103 @@ class Ftg:
                         continue
                     # sys.stdout.write('#')
                     # sys.stdout.flush()
-                    if isinstance(self.now, int):
-                        self.query['query']['bool']['filter']['range'][self.datefield]['gte'] = self.now
-                    else:
-                        self.query['query']['bool']['filter']['range'][self.datefield]['gte'] = self.now
+                    self.query["query"]["bool"]["filter"]["range"][self.datefield][
+                        "gte"
+                    ] = self.now
                     try:
                         if maxp > 10000:
                             maxp = 10000
-                        s = self.es.search(body=self.query, sort="%s:asc" % self.datefield, index=self.es_index, size=maxp)
+                        s = self.es.search(
+                            body=self.query,
+                            sort="%s:asc" % self.datefield,
+                            index=self.es_index,
+                            size=maxp,
+                        )
                     except elasticsearch.exceptions.ConnectionError:
-                        self.logger.warning("ES connection error, retry in 1sec ...", exc_info=False)
+                        self.logger.warning(
+                            "ES connection error, retry in 1sec ...", exc_info=False
+                        )
                         time.sleep(1)
                         continue
                     except elasticsearch.exceptions.RequestError as e:
-                        if 'No mapping found for' in str(e.info):
-                            self.datefield = "datetime"
-                            self.rebuild_query("timestamp", self.datefield)
-                            self.now = datetime.datetime.now() - datetime.timedelta(
-                                hours=self._from if self._from is not None else 1)
-                            self.query['query']['bool']['filter']['range'][self.datefield]['gte'] = self.get_datetime(
-                                now)
-                        else:
-                            self.logger.critical("Elasticsearch request error, will retry again in 1s ...",
-                                                 exc_info=True)
-                            time.sleep(1)
-                        continue
-                    except (elasticsearch.exceptions.TransportError, elasticsearch.exceptions.NotFoundError,
-                            elasticsearch.exceptions.ConnectionError):
-                        self.logger.critical("Elasticsearch is unreachable, will retry again in 1s ...", exc_info=True)
+                        self.logger.critical(
+                            "Elasticsearch request error, will retry again in 1s ...",
+                            exc_info=True,
+                        )
                         time.sleep(1)
-                        self.now = int(time.time()) - 60
+                        continue
+                    except (
+                        elasticsearch.exceptions.TransportError,
+                        elasticsearch.exceptions.NotFoundError,
+                        elasticsearch.exceptions.ConnectionError,
+                    ):
+                        self.logger.critical(
+                            "Elasticsearch is unreachable, will retry again in 1s ...",
+                            exc_info=True,
+                        )
+                        time.sleep(1)
+                        self.now = int((time.time() - 60) * 1000)
                         continue
 
                     try:
-                        self.last_timestamp = int(s['hits']['hits'][-1]['_source'][self.datefield])
+                        self.last_timestamp = int(
+                            s["hits"]["hits"][-1]["_source"][self.datefield]
+                        )
                     except IndexError:
                         time.sleep(self.interval)
                         continue
                     except ValueError:
-                        self.last_timestamp = get_datetime(s['hits']['hits'][-1]['_source'][self.datefield])
+                        self.last_timestamp = get_datetime(
+                            s["hits"]["hits"][-1]["_source"][self.datefield]
+                        )
                         if self.last_timestamp is None:
-                            self.logger.critical("Can't parse date: %s",
-                                                 s['hits']['hits'][-1]['_source'][self.datefield])
+                            self.logger.critical(
+                                "Can't parse date: %s",
+                                s["hits"]["hits"][-1]["_source"][self.datefield],
+                            )
                             sys.exit(1)
 
                     if self.last_timestamp <= self.now:
                         if progress:
                             if self.progress:
-                                sys.stdout.write('.')
+                                sys.stdout.write(".")
                                 sys.stdout.flush()
                         else:
-                            if time.time() - self.laststats >= 60:
+                            if time.time() - self.laststats >= 10:
                                 self.laststats = time.time()
                                 try:
-                                    idx_count = self.es.count(index=self.es_index)['count']
-                                    statsmsg = 'STATS: %d logs, ' % idx_count
-                                    for l in self.stats['levels'].keys():
-                                        statsmsg += "%s=%d, " % (l, self.stats['levels'][l])
-                                    self.logger.info(statsmsg[:-2])
+                                    idx_count = self.es.count(index=self.es_index)[
+                                        "count"
+                                    ]
+                                    statsmsg = "STATS: %d logs, " % idx_count
+                                    for l in self.stats["levels"].keys():
+                                        statsmsg += "%s=%d, " % (
+                                            l,
+                                            self.stats["levels"][l],
+                                        )
+                                    self.logger.info(
+                                        termcolor.colored(
+                                            ("{0:^%d}" % tty_columns).format(
+                                                statsmsg[:-2]
+                                            ),
+                                            "magenta",
+                                            "on_grey",
+                                            ("bold", "underline"),
+                                        )
+                                    )
                                 except elasticsearch.exceptions.ConnectionError:
                                     self.logger.warning(
                                         "ElasticSearch connection error, waiting 1sec before to try again...",
-                                        exc_info=False)
+                                        exc_info=False,
+                                    )
                                     time.sleep(1)
                                     continue
                         progress = True
                         # self.logger.debug("sleep %d ... %s <=> %s | %d results, max=%d", self.interval, self.now, s['hits']['hits'][-1]['_source'][self.datefield], s['hits']['total'], maxp)
                         try:
-                            total = s['hits']['total']['value']
+                            total = s["hits"]["total"]["value"]
                         except TypeError:
-                            total = s['hits']['total']
+                            total = s["hits"]["total"]
                         if total >= maxp:
                             maxp += self.MAX_PACKETS
                         else:
@@ -582,41 +586,30 @@ class Ftg:
                             if self.progress:
                                 sys.stdout.write("\n")
                         query_ids = []
-                        for ids in s['hits']['hits']:
-                            try:
-                                newnow = ids['_source'][self.datefield]
-                                try:
-                                    if newnow > 1470000000000 and self.now < 1470000000000:
-                                        newnow = newnow / 1000
-                                        raise TimePrecisionException()
-                                except TypeError:
-                                    newnow = self.get_datetime(newnow)
-                            except ValueError:
-                                newnow = datetime.datetime.strptime(ids['_source'][self.datefield],
-                                                                    "%Y-%m-%dT%H:%M:%S+0000")
-                            _id = ids['_id']
+                        for ids in s["hits"]["hits"]:
+                            newnow = int(ids["_source"][self.datefield])
+                            _id = ids["_id"]
                             query_ids.append(_id)
 
                             if not _id in self.lasts:
                                 try:
-                                    prettydate = datetime.datetime.fromtimestamp(newnow).strftime('%d-%m-%Y %H:%M:%S')
-                                except ValueError:
-                                    prettydate = datetime.datetime.fromtimestamp(newnow / 1000).strftime(
-                                        '%d-%m-%Y %H:%M:%S')
+                                    prettydate = datetime.datetime.fromtimestamp(
+                                        newnow / 1000
+                                    ).strftime("%d-%m-%Y %H:%M:%S")
                                 except TypeError:
                                     prettydate = str(newnow)
                                 lvl = logging.DEBUG
-                                for l in ('level_name', 'level'):
+                                for l in ("level_name", "level"):
                                     try:
-                                        loglvl = ids['_source'][l]
+                                        loglvl = ids["_source"][l]
                                         lvl = LEVELSMAP[loglvl]
                                     except KeyError:
                                         continue
 
                                 try:
-                                    logmsg = ids['_source']['msg']
+                                    logmsg = ids["_source"]["msg"]
                                 except KeyError:
-                                    logmsg = ids['_source']['message']
+                                    logmsg = ids["_source"]["message"]
                                 if short:
                                     logmsg = logmsg[:200]
                                 elif not full:
@@ -632,39 +625,78 @@ class Ftg:
                                 except KeyError:
                                     color_attr = None
                                 # record.msg = u'%s'%termcolor.colored(record.msg, color, on_color, color_attr)
-                                msg = termcolor.colored(prettydate, 'white', 'on_blue', ('bold',))
-                                if 'msg' in ids['_source']:
+                                msg = termcolor.colored(
+                                    prettydate, "white", "on_blue", ("bold",)
+                                )
+                                msgforsize = prettydate
+                                if "msg" in ids["_source"]:
                                     try:
-                                        msg += termcolor.colored("<%s>" % ids['_source']['level'], color, on_color,
-                                                                 color_attr)
+                                        msg += termcolor.colored(
+                                            "<%s>" % ids["_source"]["level"],
+                                            color,
+                                            on_color,
+                                            color_attr,
+                                        )
+                                        msgforsize += "<%s>" % ids["_source"]["level"]
                                     except KeyError:
                                         pass
                                 else:
                                     try:
-                                        msg += termcolor.colored("<%s>" % ids['_source']['level_name'], color, on_color,
-                                                                 color_attr)
+                                        msg += termcolor.colored(
+                                            "<%s>" % ids["_source"]["level_name"],
+                                            color,
+                                            on_color,
+                                            color_attr,
+                                        )
+                                        msgforsize += (
+                                            "<%s>" % ids["_source"]["level_name"]
+                                        )
                                     except KeyError:
                                         pass
                                 try:
-                                    host = ids['_source']['host']
-                                    msg += termcolor.colored("[%s]" % host, 'blue', None, ('bold',))
+                                    host = ids["_source"]["host"]
+                                    msg += termcolor.colored(
+                                        "[%s]" % host, "blue", None, ("bold",)
+                                    )
+                                    msgforsize += "[%s]" % host
                                 except:
-                                    host = 'local'
+                                    host = "local"
                                 try:
-                                    msg += "(%s) %s >> " % (_id, ids['_source']['program'])
+                                    msg += "(%s) %s >> " % (
+                                        _id,
+                                        ids["_source"]["program"],
+                                    )
+                                    msgforsize += "(%s) %s >> " % (
+                                        _id,
+                                        ids["_source"]["program"],
+                                    )
                                 except KeyError:
-                                    msg += "(%s) %s >> " % (_id, ids['_source']['context']['user'])
+                                    msg += "(%s) %s >> " % (
+                                        _id,
+                                        ids["_source"]["context"]["user"],
+                                    )
+                                    msgforsize += "(%s) %s >> " % (
+                                        _id,
+                                        ids["_source"]["context"]["user"],
+                                    )
                                 if not full and not short and tty_columns:
-                                    logmsg = logmsg.replace("\t", "  ")[:(tty_columns - len(msg) + 39)]
-                                msg += termcolor.colored(logmsg, color, on_color, color_attr)
+                                    logmsg = logmsg.replace("\t", "  ")[
+                                        : (tty_columns - len(msgforsize))
+                                    ]
+                                msg += termcolor.colored(
+                                    logmsg, color, on_color, color_attr
+                                )
 
+                                sys.stdout.write("\r")
                                 self.logger.log(lvl, msg)
 
                                 try:
-                                    self.stats['levels'][ids['_source']['level']] += 1
+                                    self.stats["levels"][ids["_source"]["level"]] += 1
                                 except KeyError:
                                     try:
-                                        self.stats['levels'][ids['_source']['level']] = 1
+                                        self.stats["levels"][
+                                            ids["_source"]["level"]
+                                        ] = 1
                                     except KeyError:
                                         pass
                             # else:
@@ -673,10 +705,10 @@ class Ftg:
                             self.lasts.append(_id)
 
                             if newnow == self.now:
-                                #self.logger.debug("now=%s %d lasts %d query_ids", self.
+                                # self.logger.debug("now=%s %d lasts %d query_ids", self.
                                 #                  now, len(self.lasts), len(query_ids))
                                 # Max packets reached
-                                if len(s['hits']['hits']) == maxp:
+                                if len(s["hits"]["hits"]) == maxp:
                                     maxp += self.MAX_PACKETS
                             else:
                                 maxp = self.MAX_PACKETS
@@ -693,11 +725,10 @@ class Ftg:
 
 
 class ColoredFormatter(logging.Formatter):  # {{{
-
     def __init__(self):
         # main formatter:
-        logformat = '%(message)s'
-        logdatefmt = '%H:%M:%S %d/%m/%Y'
+        logformat = "%(message)s"
+        logdatefmt = "%H:%M:%S %d/%m/%Y"
         logging.Formatter.__init__(self, logformat, logdatefmt)
 
     def format(self, record):
@@ -711,36 +742,62 @@ class ColoredFormatter(logging.Formatter):  # {{{
                 color_attr = self.COLORS_ATTRS[record.levelname]
             except KeyError:
                 color_attr = None
-            record.msg = u'%s' % termcolor.colored(record.msg, color, on_color, color_attr)
+            record.msg = u"%s" % termcolor.colored(
+                record.msg, color, on_color, color_attr
+            )
         return logging.Formatter.format(self, record)
 
 
 # }}}
 
+
 def main():
     parser = argparse.ArgumentParser()
     parser.add_argument("--full", help="Do not truncate output", action="store_true")
-    parser.add_argument("--short", help="truncate output to 200 chars (default to terminal size)", action="store_true")
+    parser.add_argument(
+        "--short",
+        help="truncate output to 200 chars (default to terminal size)",
+        action="store_true",
+    )
     parser.add_argument("--error", help="Only errors", action="store_true")
     parser.add_argument("--fatal", help="Only fatals", action="store_true")
     parser.add_argument("--notice", help="Only notices", action="store_true")
     parser.add_argument("--warn", help="Only warnings", action="store_true")
     parser.add_argument("--info", help="Only >= INFO", action="store_true")
-    parser.add_argument("--from", help="Starts from N hours ago", action="store", type=int, dest="_from")
+    parser.add_argument(
+        "--from", help="Starts from N hours ago", action="store", type=int, dest="_from"
+    )
     parser.add_argument("--progress", help="Progress bar", action="store_true")
-    parser.add_argument("--grep", help="grep pattern. Use /pattern/ for regex search.", action="store")
-    parser.add_argument("--exclude", help="grep pattern. Use /pattern/ for regex exclusion.", action="store")
+    parser.add_argument(
+        "--grep", help="grep pattern. Use /pattern/ for regex search.", action="store"
+    )
+    parser.add_argument(
+        "--exclude",
+        help="grep pattern. Use /pattern/ for regex exclusion.",
+        action="store",
+    )
     parser.add_argument("--program", help="grep program.", action="store")
     parser.add_argument("--tag", help="grep tag.", action="store")
     parser.add_argument("--host", help="host only", action="store")
-    parser.add_argument("--index", help="specify elasticsearch index, default 'self.logger'", action="store",
-                        default='logs')
+    parser.add_argument(
+        "--index",
+        help="specify elasticsearch index, default 'self.logger'",
+        action="store",
+        default="logs",
+    )
     parser.add_argument("--id", help="get specific id in ES index", action="store")
-    parser.add_argument("--interval", help="interval between queries, default 1s", action="store", type=float,
-                        default=1)
+    parser.add_argument(
+        "--interval",
+        help="interval between queries, default 1s",
+        action="store",
+        type=float,
+        default=0.2,
+    )
     parser.add_argument("--url", help="Use another ES", action="store", default=url)
     parser.add_argument("--no-update", help="Update", action="store_true", default=True)
-    parser.add_argument("--list", help="List indices", action="store_true", default=False)
+    parser.add_argument(
+        "--list", help="List indices", action="store_true", default=False
+    )
     args = parser.parse_args()
 
     # Auto-update
@@ -750,16 +807,16 @@ def main():
             os.chdir(os.path.dirname(os.path.abspath(sys.argv[0])))
             poetry_lock_hash = None
 
-            with open("poetry.lock", 'rb') as f:
+            with open("poetry.lock", "rb") as f:
                 data = f.read()
                 poetry_lock_hash = hashlib.md5(data).hexdigest()
-                print("poetry.lock hash: %s"%poetry_lock_hash)
+                print("poetry.lock hash: %s" % poetry_lock_hash)
 
             subprocess.run(["/usr/bin/git", "pull", "origin", "master"], check=True)
 
-            with open("poetry.lock", 'rb') as f:
+            with open("poetry.lock", "rb") as f:
                 data = f.read()
-                print("poetry.lock hash: %s"%hashlib.md5(data).hexdigest())
+                print("poetry.lock hash: %s" % hashlib.md5(data).hexdigest())
                 if poetry_lock_hash != hashlib.md5(data).hexdigest():
                     subprocess.run(["poetry", "install"], check=True)
 
@@ -773,8 +830,9 @@ def main():
     ftg = Ftg(args.url, args.interval, args.progress)
 
     if args.list:
+        print("|--- index name ---|--- status ---|")
         for ind in ftg.list():
-            print("- %s" % ind)
+            print("| {0[0]:^16} | {0[1]:^12} |".format(ind))
         sys.exit(0)
 
     ftg.set_index(args.index)
@@ -783,7 +841,7 @@ def main():
         doc = ftg.get_id(args.id)
         if doc:
             print("RESULT for ES#%s :" % (args.id,))
-            for k, v in doc['_source'].items():
+            for k, v in doc["_source"].items():
                 print("%-14s: %s" % (k, v))
             sys.exit(0)
         else:
@@ -836,5 +894,5 @@ def main():
     ftg.loop(args.short, args.full)
 
 
-if __name__ == '__main__':
+if __name__ == "__main__":
     main()
