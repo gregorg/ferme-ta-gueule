@@ -681,7 +681,7 @@ class Ftg:
                                     )
                                 if not full and not short and tty_columns:
                                     logmsg = logmsg.replace("\t", "  ")[
-                                        : (tty_columns - len(msgforsize))
+                                        : (tty_columns - len(msgforsize) - 1)
                                     ]
                                 msg += termcolor.colored(
                                     logmsg, color, on_color, color_attr
