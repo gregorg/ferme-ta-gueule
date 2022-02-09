@@ -642,7 +642,7 @@ class Ftg:
                                 if "msg" in ids["_source"]:
                                     try:
                                         msg += emoji
-                                        msgforsize += emoji
+                                        msgforsize += "  "
                                     except KeyError:
                                         pass
                                 else:
