@@ -53,6 +53,13 @@ COLORS = {
     "ERROR": "white",
     "CRITICAL": "yellow",
 }
+EMOJIS = {
+    "DEBUG": "💨",
+    "INFO": "⌚️",
+    "WARNING": "💢",
+    "ERROR": "💥",
+    "CRITICAL": "🚨",
+}
 ON_COLORS = {
     "CRITICAL": "on_red",
     "ERROR": "on_red",
@@ -618,6 +625,7 @@ class Ftg:
                                     logmsg = " ".join(logmsg.split("\n")[:2])
 
                                 color = COLORS[logging.getLevelName(lvl)]
+                                emoji = EMOJIS[logging.getLevelName(lvl)]
                                 try:
                                     on_color = ON_COLORS[logging.getLevelName(lvl)]
                                 except KeyError:
@@ -633,13 +641,8 @@ class Ftg:
                                 msgforsize = prettydate
                                 if "msg" in ids["_source"]:
                                     try:
-                                        msg += termcolor.colored(
-                                            "<%s>" % ids["_source"]["level"],
-                                            color,
-                                            on_color,
-                                            color_attr,
-                                        )
-                                        msgforsize += "<%s>" % ids["_source"]["level"]
+                                        msg += emoji
+                                        msgforsize += emoji
                                     except KeyError:
                                         pass
                                 else:
