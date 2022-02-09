@@ -275,14 +275,11 @@ class Ftg:
                 # filter on data streams
                 if (
                     index["ilm_policy"] == "logs_policy"
-                    and not index["system"]
                     and not index["hidden"]
                 ):
                     indices.append((index["name"], index["status"]))
             except elasticsearch.exceptions.AuthorizationException:
                 pass
-            except Exception as e:
-                print(str(e))
         return indices
 
     def get_id(self, id):
