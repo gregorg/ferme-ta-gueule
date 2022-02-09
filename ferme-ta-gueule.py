@@ -465,6 +465,7 @@ class Ftg:
         tty_columns = self.get_terminal_width()
         maxp = self.MAX_PACKETS
         progress = self.progress
+        today = datetime.datetime.now().replace(hour=0, minute=0, second=0, microsecond=0)
 
         try:
             while True:
@@ -590,9 +591,13 @@ class Ftg:
 
                             if not _id in self.lasts:
                                 try:
-                                    prettydate = datetime.datetime.fromtimestamp(
+                                    ptd = datetime.datetime.fromtimestamp(
                                         newnow / 1000
-                                    ).strftime("%d-%m-%Y %H:%M:%S")
+                                    )
+                                    if ptd > today:
+                                        prettydate = ptd.strftime("%H:%M:%S")
+                                    else:
+                                        prettydate = ptd.strftime("%d-%m-%Y %H:%M:%S")
                                 except TypeError:
                                     prettydate = str(newnow)
                                 lvl = logging.DEBUG
@@ -715,6 +720,7 @@ class Ftg:
                         # time.sleep(0.1)
                         if tty_columns:
                             tty_columns = self.get_terminal_width()
+                            today = datetime.datetime.now().replace(hour=0, minute=0, second=0, microsecond=0)
                 except TimePrecisionException:
                     time.sleep(1)
         except KeyboardInterrupt:
