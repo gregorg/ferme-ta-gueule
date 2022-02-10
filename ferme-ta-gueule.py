@@ -123,6 +123,8 @@ class FtgShell(cmd.Cmd):
             print("👀 ID #%s :" % (arg,))
             for k, v in doc["_source"].items():
                 print("%-14s: %s" % (k, v))
+        else:
+            print("🥶 ID not found #%s"%arg)
 
     def do_from(self, arg):
         """from "12" seconds or "3h" hours"""
@@ -293,12 +295,14 @@ class Ftg:
         tries = 1
         while True:
             try:
-                return self.es.search(
+                res = self.es.search(
                     body={"query": {"terms": {"_id": [id]}}},
                     index=self.es_index,
                     size=1,
-                )["hits"]["hits"][0]
-                break
+                )["hits"]["hits"]
+                if res:
+                    return res[0]
+                return None
             except elasticsearch.exceptions.NotFoundError:
                 if tries >= 4:
                     return None
