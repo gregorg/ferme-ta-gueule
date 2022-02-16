@@ -255,13 +255,16 @@ class Ftg:
         self.progress = p
 
     def set_index(self, index):
-        self.es_index = index
-        self.logger.info(
-            "[%s] %d logs in ElasticSearch index %s",
-            self.masked_url,
-            self.es.count(index=self.es_index)["count"],
-            self.es_index,
-        )
+        try:
+            self.logger.info(
+                "[%s] %d logs in ElasticSearch index %s",
+                self.masked_url,
+                self.es.count(index=index)["count"],
+                index,
+            )
+            self.es_index = index
+        except elasticsearch.exceptions.NotFoundError:
+            self.logger.critical("Index '%s' not found", index)
 
     def es_stats(self, indices):
         if indices == "all":
