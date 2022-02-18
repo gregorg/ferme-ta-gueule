@@ -1,22 +1,23 @@
 # ferme-ta-gueule
 
-Logger live d'erreurs provenant d'un cluster ElasticSearch
+Live logs streamer from ElasticSearch cluster.
 
 ![Ferme_ta_gueule_by_Katikut](http://fc09.deviantart.net/fs48/f/2009/226/3/f/Ferme_ta_gueule_by_Katikut.jpg)
 
+## Quick install
 
-## Installer Poetry
+Run:
+```
+./setup.sh
+```
+
+## Or install Poetry and deps
 
 ```
 curl -sSL https://install.python-poetry.org | python3 -
-```
-
-
-## Puis les dépendances
-
-```
 poetry install
 ```
+
 
 ## Enjoy
 
@@ -24,13 +25,10 @@ poetry install
 poetry run ftg
 ```
 
-## Variante avec Docker
+## With Docker
 
 ```
 docker build -t ftg .
 docker run -it ftg
 ```
 
-## Sécurité
-
-L'accès à notre cluster ElasticSearch est bien évidemment protégé ...
