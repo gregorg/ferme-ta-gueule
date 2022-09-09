@@ -9,5 +9,9 @@ then
 else
     ./setup.sh
 fi
-source ~/.poetry/env
+
+if [ -e ~/.poetry/env ]
+then
+    source ~/.poetry/env
+fi
 poetry run ftg $@
