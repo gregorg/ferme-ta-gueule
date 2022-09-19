@@ -6,7 +6,7 @@ RUN apt-get update \
     && apt-get clean \
     && ln -s /usr/bin/python3 /usr/bin/python
 
-RUN curl -sSL https://raw.githubusercontent.com/python-poetry/poetry/master/get-poetry.py | POETRY_HOME=/usr/local/poetry python3 \
+RUN curl -sSL https://install.python-poetry.org | POETRY_HOME=/usr/local/poetry python3 - \
     && ln -s /usr/local/poetry/bin/poetry /usr/bin/poetry \ 
     && ls -l /usr/bin/poetry /usr/local/poetry/bin/poetry
 
