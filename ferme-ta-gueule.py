@@ -15,10 +15,6 @@ import hashlib
 import argparse
 import signal
 
-# Force elasticsearch package version
-import pkg_resources
-
-pkg_resources.require("elasticsearch>=7.9.0")
 import elasticsearch
 
 from pprint import pprint
