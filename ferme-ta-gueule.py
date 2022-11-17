@@ -73,7 +73,8 @@ class TimePrecisionException(Exception):
 
 
 class FtgShell(cmd.Cmd):
-    prompt = "🚨 "
+    prompt = "● "
+    #prompt = "⎇ "
 
     def __init__(self, ftg, event):
         super().__init__()
