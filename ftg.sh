@@ -2,6 +2,8 @@
 
 set -e
 
+cd $( dirname $0 )
+
 # -q param to skip ftg updates
 if [ "$1" = "-q" ]
 then 
