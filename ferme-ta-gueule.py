@@ -51,7 +51,7 @@ COLORS = {
 }
 EMOJIS = {
     "DEBUG": "💨",
-    "INFO": "⌚️",
+    "INFO": "🔹",
     "WARNING": "💢",
     "ERROR": "💥",
     "CRITICAL": "🚨",
