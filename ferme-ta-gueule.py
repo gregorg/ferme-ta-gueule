@@ -182,7 +182,7 @@ class FtgShell(cmd.Cmd):
     def do_pause(self, arg):
         """pause"""
         self.ftg.pause()
-        print("PAUSED")
+        print("⌚️ PAUSED")
 
     def do_resume(self, arg):
         """resume"""
