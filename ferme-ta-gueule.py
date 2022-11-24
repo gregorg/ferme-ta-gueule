@@ -218,6 +218,7 @@ class Ftg:
         self.progress = progress
         self.query_ids = []
         self.query = {}
+        self.grep_pattern = None
         self.pause_event = threading.Event()
 
         self.es = elasticsearch.Elasticsearch(
@@ -344,21 +345,14 @@ class Ftg:
         self.set_levels()
 
     def reset(self):
+        self.grep_pattern = None
         try:
             del self.query["query"]["bool"]["must"]
         except KeyError:
             pass
 
     def grep(self, pattern):
-        grep = self.pattern_to_es(pattern)
-        try:
-            self.query["query"]["bool"]["must"].append(
-                {"query_string": {"fields": ["msg"], "query": grep}}
-            )
-        except KeyError:
-            self.query["query"]["bool"]["must"] = [
-                ({"query_string": {"fields": ["msg"], "query": grep}})
-            ]
+        self.grep_pattern = re.compile(pattern)
 
     def exclude(self, exclude):
         try:
@@ -597,6 +591,11 @@ class Ftg:
                         query_ids = []
                         for ids in s["hits"]["hits"]:
                             newnow = int(ids["_source"][self.datefield])
+
+                            if self.grep_pattern is not None:
+                                if not self.grep_pattern.search(ids["_source"]["msg"]):
+                                    continue
+
                             _id = ids["_id"]
                             query_ids.append(_id)
 
