@@ -592,12 +592,13 @@ class Ftg:
                         for ids in s["hits"]["hits"]:
                             newnow = int(ids["_source"][self.datefield])
 
-                            if self.grep_pattern is not None:
-                                if not self.grep_pattern.search(ids["_source"]["msg"]):
-                                    continue
-
                             _id = ids["_id"]
                             query_ids.append(_id)
+
+                            if self.grep_pattern is not None:
+                                if not self.grep_pattern.search(ids["_source"]["msg"]):
+                                    self.now = newnow
+                                    continue
 
                             if not _id in self.lasts:
                                 try:
