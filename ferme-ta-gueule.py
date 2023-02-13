@@ -544,7 +544,7 @@ class Ftg:
                                 sys.stdout.write(".")
                                 sys.stdout.flush()
                         else:
-                            if time.time() - self.laststats >= 60:
+                            if time.time() - self.laststats >= 60 and self.grep_pattern is None:
                                 self.laststats = time.time()
                                 try:
                                     idx_count = self.es.count(index=self.es_index)[
