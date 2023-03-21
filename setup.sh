@@ -2,7 +2,7 @@
 
 set -e
 
-git pull
+git pull origin master --ff-only
 
 if [ -e ~/.poetry/env ]
 then
