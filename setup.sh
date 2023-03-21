@@ -12,6 +12,8 @@ then
     curl -sSL https://install.python-poetry.org | python3 -
 fi
 
+export PATH="$HOME/.local/bin:$PATH"
+
 poetry install
 
 echo
