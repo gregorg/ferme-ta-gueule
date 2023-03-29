@@ -25,6 +25,20 @@ poetry install
 poetry run ftg
 ```
 
+### Exclude on programs
+
+```
+poetry run ftg --program '!signup,!fix-location'
+```
+
+### Grep strings
+
+With Python regex (not ElasticSearch) :
+
+```
+poetry run ftg --grep "string"
+```
+
 ## With Docker
 
 ```
