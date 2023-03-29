@@ -375,19 +375,33 @@ class Ftg:
                     }
                 )
             ]
-        self.query["query"]["bool"]["must_not"].append(
-            {"query_string": {"fields": ["program"], "query": exclude}}
-        )
 
     def program(self, program):
-        try:
-            self.query["query"]["bool"]["must"].append(
-                {"query_string": {"fields": ["program"], "query": program}}
-            )
-        except KeyError:
-            self.query["query"]["bool"]["must"] = [
-                ({"query_string": {"fields": ["program"], "query": program}})
-            ]
+        must = []
+        must_not = []
+        for prog in program.split(","):
+            if prog.startswith('!'):
+                must_not.append(prog.lstrip('!'))
+            else:
+                must.append(prog)
+        for prog in must:
+            try:
+                self.query["query"]["bool"]["must"].append(
+                    {"term": {"program": prog}}
+                )
+            except KeyError:
+                self.query["query"]["bool"]["must"] = [
+                    {"term": {"program": prog}}
+                ]
+        for prog in must_not:
+            try:
+                self.query["query"]["bool"]["must_not"].append(
+                    {"term": {"program": prog}}
+                )
+            except KeyError:
+                self.query["query"]["bool"]["must_not"] = [
+                    {"term": {"program": prog}}
+                ]
 
     def tag(self, tag):
         try:
@@ -402,11 +416,11 @@ class Ftg:
     def host(self, host):
         try:
             self.query["query"]["bool"]["must"].append(
-                {"query_string": {"fields": ["host"], "query": host}}
+                {"term": {"host": host}}
             )
         except KeyError:
             self.query["query"]["bool"]["must"] = [
-                ({"query_string": {"fields": ["host"], "query": host}})
+                ({"term": {"host": host}})
             ]
 
     def pattern_to_es(self, pattern):
