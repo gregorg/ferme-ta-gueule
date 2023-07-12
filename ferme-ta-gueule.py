@@ -74,7 +74,7 @@ class TimePrecisionException(Exception):
 
 class FtgShell(cmd.Cmd):
     prompt = "● "
-    #prompt = "⎇ "
+    # prompt = "⎇ "
 
     def __init__(self, ftg, event):
         super().__init__()
@@ -121,7 +121,7 @@ class FtgShell(cmd.Cmd):
             for k, v in doc["_source"].items():
                 print("%-14s: %s" % (k, v))
         else:
-            print("🥶 ID not found #%s"%arg)
+            print("🥶 ID not found #%s" % arg)
 
     def do_from(self, arg):
         """from "12" seconds or "3h" hours"""
@@ -283,10 +283,7 @@ class Ftg:
         for index in self.es.indices.get_data_stream("*")["data_streams"]:
             try:
                 # filter on data streams
-                if (
-                    index["ilm_policy"] == "logs_policy"
-                    and not index["hidden"]
-                ):
+                if index["ilm_policy"] == "logs_policy" and not index["hidden"]:
                     indices.append((index["name"], index["status"]))
             except elasticsearch.exceptions.AuthorizationException:
                 pass
@@ -380,28 +377,22 @@ class Ftg:
         must = []
         must_not = []
         for prog in program.split(","):
-            if prog.startswith('!'):
-                must_not.append(prog.lstrip('!'))
+            if prog.startswith("!"):
+                must_not.append(prog.lstrip("!"))
             else:
                 must.append(prog)
         for prog in must:
             try:
-                self.query["query"]["bool"]["must"].append(
-                    {"term": {"program": prog}}
-                )
+                self.query["query"]["bool"]["must"].append({"term": {"program": prog}})
             except KeyError:
-                self.query["query"]["bool"]["must"] = [
-                    {"term": {"program": prog}}
-                ]
+                self.query["query"]["bool"]["must"] = [{"term": {"program": prog}}]
         for prog in must_not:
             try:
                 self.query["query"]["bool"]["must_not"].append(
                     {"term": {"program": prog}}
                 )
             except KeyError:
-                self.query["query"]["bool"]["must_not"] = [
-                    {"term": {"program": prog}}
-                ]
+                self.query["query"]["bool"]["must_not"] = [{"term": {"program": prog}}]
 
     def tag(self, tag):
         try:
@@ -415,13 +406,9 @@ class Ftg:
 
     def host(self, host):
         try:
-            self.query["query"]["bool"]["must"].append(
-                {"term": {"host": host}}
-            )
+            self.query["query"]["bool"]["must"].append({"term": {"host": host}})
         except KeyError:
-            self.query["query"]["bool"]["must"] = [
-                ({"term": {"host": host}})
-            ]
+            self.query["query"]["bool"]["must"] = [({"term": {"host": host}})]
 
     def pattern_to_es(self, pattern):
         if (
@@ -484,7 +471,9 @@ class Ftg:
         tty_columns = self.get_terminal_width()
         maxp = self.MAX_PACKETS
         progress = self.progress
-        today = datetime.datetime.now().replace(hour=0, minute=0, second=0, microsecond=0)
+        today = datetime.datetime.now().replace(
+            hour=0, minute=0, second=0, microsecond=0
+        )
 
         try:
             while True:
@@ -558,7 +547,10 @@ class Ftg:
                                 sys.stdout.write(".")
                                 sys.stdout.flush()
                         else:
-                            if time.time() - self.laststats >= 60 and self.grep_pattern is None:
+                            if (
+                                time.time() - self.laststats >= 60
+                                and self.grep_pattern is None
+                            ):
                                 self.laststats = time.time()
                                 try:
                                     idx_count = self.es.count(index=self.es_index)[
@@ -616,9 +608,7 @@ class Ftg:
 
                             if not _id in self.lasts:
                                 try:
-                                    ptd = datetime.datetime.fromtimestamp(
-                                        newnow / 1000
-                                    )
+                                    ptd = datetime.datetime.fromtimestamp(newnow / 1000)
                                     if ptd > today:
                                         prettydate = ptd.strftime("%H:%M:%S")
                                     else:
@@ -741,7 +731,9 @@ class Ftg:
                         # time.sleep(0.1)
                         if tty_columns:
                             tty_columns = self.get_terminal_width()
-                            today = datetime.datetime.now().replace(hour=0, minute=0, second=0, microsecond=0)
+                            today = datetime.datetime.now().replace(
+                                hour=0, minute=0, second=0, microsecond=0
+                            )
                 except TimePrecisionException:
                     time.sleep(1)
         except KeyboardInterrupt:
@@ -766,7 +758,7 @@ class ColoredFormatter(logging.Formatter):  # {{{
                 color_attr = self.COLORS_ATTRS[record.levelname]
             except KeyError:
                 color_attr = None
-            record.msg = u"%s" % termcolor.colored(
+            record.msg = "%s" % termcolor.colored(
                 record.msg, color, on_color, color_attr
             )
         return logging.Formatter.format(self, record)
