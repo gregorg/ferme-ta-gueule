@@ -4,6 +4,14 @@ Live logs streamer from ElasticSearch cluster.
 
 ![Ferme_ta_gueule_by_Katikut](http://fc09.deviantart.net/fs48/f/2009/226/3/f/Ferme_ta_gueule_by_Katikut.jpg)
 
+## Quick run from Docker images
+
+Images available for OSX and Linux OS.
+
+```
+docker run --rm -it ghcr.io/gregorg/ferme-ta-gueule:master
+```
+
 ## Quick install
 
 Run:
@@ -17,7 +25,6 @@ Run:
 curl -sSL https://install.python-poetry.org | python3 -
 poetry install
 ```
-
 
 ## Enjoy
 
