@@ -1,5 +1,7 @@
 FROM debian:bullseye-slim
 
+ENV DEBIAN_FRONTEND noninteractive
+
 RUN apt-get update \
     && apt-get -y dist-upgrade \
     && apt-get -y --no-install-recommends install python3 python3-pip curl \
@@ -17,7 +19,8 @@ ENTRYPOINT ["poetry", "run", "ftg"]
 
 # minimize layers updates
 COPY poetry.* *.toml ./
-RUN poetry install --no-root
+RUN poetry install --no-root \
+    && rm -rf /root/.{local,cache}
 
 # should be last:
 COPY . .

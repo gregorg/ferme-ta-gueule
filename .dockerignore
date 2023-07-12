@@ -1,3 +1,5 @@
 .poetry
 .venv
 __pycache__
+.github
+.git
