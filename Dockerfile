@@ -1,12 +1,13 @@
-FROM debian:buster-slim
+FROM debian:bullseye-slim
 
 RUN apt-get update \
     && apt-get -y dist-upgrade \
     && apt-get -y --no-install-recommends install python3 python3-pip curl \
     && apt-get clean \
-    && ln -s /usr/bin/python3 /usr/bin/python
+    && rm -rf /var/lib/apt/*
 
-RUN curl -sSL https://install.python-poetry.org | POETRY_HOME=/usr/local/poetry python3 - \
+RUN python3 -m pip install -U pip \
+    && curl -sSL https://install.python-poetry.org | POETRY_HOME=/usr/local/poetry python3 - \
     && ln -s /usr/local/poetry/bin/poetry /usr/bin/poetry \ 
     && ls -l /usr/bin/poetry /usr/local/poetry/bin/poetry
 
