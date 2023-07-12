@@ -19,10 +19,6 @@ import elasticsearch
 
 from pprint import pprint
 
-# https://urllib3.readthedocs.org/en/latest/security.html#insecureplatformwarning
-import urllib3
-
-# urllib3.disable_warnings()
 import logging
 
 logging.captureWarnings(True)
@@ -397,11 +393,11 @@ class Ftg:
     def tag(self, tag):
         try:
             self.query["query"]["bool"]["must"].append(
-                {"query_string": {"fields": ["msg"], "query": "\t%s \-" % tag}}
+                {"query_string": {"fields": ["msg"], "query": "\t%s -" % tag}}
             )
         except KeyError:
             self.query["query"]["bool"]["must"] = [
-                ({"query_string": {"fields": ["msg"], "query": "\t%s \-" % tag}})
+                ({"query_string": {"fields": ["msg"], "query": "\t%s -" % tag}})
             ]
 
     def host(self, host):
@@ -435,13 +431,13 @@ class Ftg:
             stty = os.popen("stty size", "r")
             tty_rows, tty_columns = stty.read().split()
             return int(tty_columns)
-        except:
+        except Exception:
             self.logger.warning("Unable to guess terminal size")
             return False
         finally:
             try:
                 stty.close()
-            except:
+            except Exception:
                 pass
 
     def get_datetime(self, field):
@@ -450,7 +446,7 @@ class Ftg:
         for format in ("%Y-%m-%dT%H:%M:%S+0000", "%Y-%m-%dT%H:%M:%S.%f+00:00"):
             try:
                 return datetime.datetime.strptime(field, format)
-            except:
+            except Exception:
                 pass
         return None
 
@@ -503,7 +499,7 @@ class Ftg:
                         )
                         time.sleep(1)
                         continue
-                    except elasticsearch.exceptions.RequestError as e:
+                    except elasticsearch.exceptions.RequestError:
                         self.logger.critical(
                             "Elasticsearch request error, will retry again in 1s ...",
                             exc_info=True,
@@ -531,7 +527,7 @@ class Ftg:
                         time.sleep(self.interval)
                         continue
                     except ValueError:
-                        self.last_timestamp = get_datetime(
+                        self.last_timestamp = self.get_datetime(
                             s["hits"]["hits"][-1]["_source"][self.datefield]
                         )
                         if self.last_timestamp is None:
@@ -557,10 +553,10 @@ class Ftg:
                                         "count"
                                     ]
                                     statsmsg = "STATS: %d logs, " % idx_count
-                                    for l in self.stats["levels"].keys():
+                                    for lv in self.stats["levels"].keys():
                                         statsmsg += "%s=%d, " % (
-                                            l,
-                                            self.stats["levels"][l],
+                                            lv,
+                                            self.stats["levels"][lv],
                                         )
                                     self.logger.info(
                                         termcolor.colored(
@@ -580,7 +576,9 @@ class Ftg:
                                     time.sleep(1)
                                     continue
                         progress = True
-                        # self.logger.debug("sleep %d ... %s <=> %s | %d results, max=%d", self.interval, self.now, s['hits']['hits'][-1]['_source'][self.datefield], s['hits']['total'], maxp)
+                        # self.logger.debug(
+                        #   "sleep %d ... %s <=> %s | %d results, max=%d",
+                        # self.interval, self.now, s['hits']['hits'][-1]['_source'][self.datefield], s['hits']['total'], maxp)
                         try:
                             total = s["hits"]["total"]["value"]
                         except TypeError:
@@ -606,7 +604,7 @@ class Ftg:
                                     self.now = newnow
                                     continue
 
-                            if not _id in self.lasts:
+                            if _id not in self.lasts:
                                 try:
                                     ptd = datetime.datetime.fromtimestamp(newnow / 1000)
                                     if ptd > today:
@@ -616,9 +614,9 @@ class Ftg:
                                 except TypeError:
                                     prettydate = str(newnow)
                                 lvl = logging.DEBUG
-                                for l in ("level_name", "level"):
+                                for lv in ("level_name", "level"):
                                     try:
-                                        loglvl = ids["_source"][l]
+                                        loglvl = ids["_source"][lv]
                                         lvl = LEVELSMAP[loglvl]
                                     except KeyError:
                                         continue
@@ -672,7 +670,7 @@ class Ftg:
                                         "[%s]" % host, "blue", None, ("bold",)
                                     )
                                     msgforsize += "[%s]" % host
-                                except:
+                                except Exception:
                                     host = "local"
                                 try:
                                     msg += "(%s) %s >> " % (
@@ -840,7 +838,7 @@ def main():
             sys.argv.append("--no-update")
             os.execv(sys.argv[0], sys.argv)
             sys.exit(0)
-        except:
+        except Exception:
             print("Update failed.")
 
     ftg = Ftg(args.url, args.interval, args.progress)
