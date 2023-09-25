@@ -98,6 +98,7 @@ class FtgShell(cmd.Cmd):
         "debug"
         debug = self.ftg.get_debug()
         pprint(debug)
+        print("Grep:", self.ftg.grep_pattern)
 
     def do_ls(self, arg):
         """list available indices"""
@@ -783,7 +784,7 @@ def main():
     )
     parser.add_argument("--progress", help="Progress bar", action="store_true")
     parser.add_argument(
-        "--grep", help="grep pattern. Use /pattern/ for regex search.", action="store"
+        "--grep", help="grep pattern. Use /pattern/ for regex search.", action="store", nargs='+'
     )
     parser.add_argument(
         "--exclude",
@@ -885,7 +886,7 @@ def main():
         ftg.set_level(logging.CRITICAL)
 
     if args.grep:
-        ftg.grep(args.grep)
+        ftg.grep(' '.join(args.grep))
 
     if args.exclude:
         ftg.exclude(args.exclude)
