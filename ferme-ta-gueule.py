@@ -870,7 +870,7 @@ def main():
     if args._from:
         ftg.set_from(int(time.time()) - 3600 * args._from)
     else:
-        ftg.set_from(int(time.time()) - 60)
+        ftg.set_from(int(time.time()) - 1)
 
     ftg.prepare()
 
@@ -899,6 +899,14 @@ def main():
 
     if args.host:
         ftg.host(args.host)
+
+    try:
+        if sys.platform == "darwin":
+            if os.system("viu ftg.jpeg"):
+                os.system("brew install viu")
+            else:
+                time.sleep(1)
+    except: pass
 
     shell_event = threading.Event()
     shell = FtgShell(ftg, shell_event)
