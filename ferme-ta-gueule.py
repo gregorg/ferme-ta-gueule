@@ -990,6 +990,7 @@ Please move to OSX ☺️
     ftg.loop(args.short, args.full)
 
 def stop_webserver():
+    global webserver
     if webserver != None:
             webserver.shutdown()
 
@@ -997,6 +998,8 @@ def start_webserver(ftg: Ftg, shell: FtgShell):
     global unformated_msgs
     global command_output
     global webserver
+    global WEBSERVER_MAX_LOGS
+    global WEBSERVER_PORT
 
     app = Flask(__name__)
 
@@ -1004,8 +1007,10 @@ def start_webserver(ftg: Ftg, shell: FtgShell):
     # and the status of the program
     @app.route("/")
     def ftg_output():
+        global unformated_msgs
+        global command_output
         # to avoid too big responses, we only keep the last 100 logs
-        if (unformated_msgs.count > WEBSERVER_MAX_LOGS):
+        if (len(unformated_msgs) > WEBSERVER_MAX_LOGS):
             unformated_msgs = unformated_msgs[-WEBSERVER_MAX_LOGS:]
 
         # clear the list of logs since last call and return them
@@ -1020,6 +1025,8 @@ def start_webserver(ftg: Ftg, shell: FtgShell):
     # run a command in the shell
     @app.route("/command/<command>")
     def ftg_run_command(command):
+        global command_output
+
         if (command == 'stop' or command == 'exit' or command == 'q'):
             ftg.shell_event.set()
             stop_webserver()
@@ -1031,6 +1038,8 @@ def start_webserver(ftg: Ftg, shell: FtgShell):
         return output
 
     def run():
+        global webserver
+
         webserver = make_server('127.0.0.1', WEBSERVER_PORT, app)
         webserver.serve_forever()
 
