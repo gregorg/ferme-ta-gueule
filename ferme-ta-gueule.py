@@ -14,14 +14,19 @@ import re
 import hashlib
 import argparse
 import signal
+import json
 
 import elasticsearch
 
 from pprint import pprint
+from flask import Flask
+from werkzeug.serving import make_server
 
 import logging
+import threading
 
 logging.captureWarnings(True)
+
 
 url = "https://elasticsearch.easyflirt.com:443"
 LEVELSMAP = {
@@ -63,6 +68,16 @@ COLORS_ATTRS = {
     "DEBUG": ("dark",),
 }
 
+# Changed only if webserver is started
+webserver = None
+
+WEBSERVER_MAX_LOGS = 100
+WEBSERVER_PORT = 8000
+# Used to store unformated messages for webserver
+# raw_msg = "date [-] emoji [-] host [-] id [-] program [-] logmsg"
+unformated_msgs = []
+# store last command output
+command_output = {}
 
 class TimePrecisionException(Exception):
     pass
@@ -105,20 +120,28 @@ class FtgShell(cmd.Cmd):
         print("|--- index name ---|--- status ---|")
         for ind in self.ftg.list():
             print("| {0[0]:^16} | {0[1]:^12} |".format(ind))
+            if 'indexes' not in command_output:
+                command_output['indexes'] = []
+            command_output['indexes'].append(ind[0])
 
     def do_index(self, arg):
         """set index"""
         self.ftg.set_index(arg)
 
     def do_id(self, arg):
-        """print details for an Id"""
-        doc = self.ftg.get_id(arg)
-        if doc:
-            print("👀 ID #%s :" % (arg,))
-            for k, v in doc["_source"].items():
-                print("%-14s: %s" % (k, v))
-        else:
-            print("🥶 ID not found #%s" % arg)
+        if (arg != None or arg != "" or arg != "\n"):
+            """print details for an Id"""
+            doc = self.ftg.get_id(arg)
+            command_output['ID'] = arg
+            if doc:
+                print("👀 ID #%s :" % (arg,))
+                command_output['status'] = 'found'
+                for k, v in doc["_source"].items():
+                    print("%-14s: %s" % (k, v))
+                    command_output[k] = v
+            else:
+                print("🥶 ID not found #%s" % (arg,))
+                command_output['status'] = 'not found'
 
     def do_from(self, arg):
         """from "12" seconds or "3h" hours"""
@@ -173,6 +196,7 @@ class FtgShell(cmd.Cmd):
 
     def do_q(self, arg):
         """exit"""
+        stop_webserver()
         self.event.set()
         return True
 
@@ -237,6 +261,7 @@ class Ftg:
 
     def get_debug(self):
         return {
+            "pause": self.is_paused(),
             "progress": self.progress,
             "index": self.es_index,
             "url": self.masked_url,
@@ -464,6 +489,7 @@ class Ftg:
         return self.pause_event.is_set()
 
     def loop(self, short, full):
+        global unformated_msgs
         self.logger.debug("ES query: %s" % self.query)
         tty_columns = self.get_terminal_width()
         maxp = self.MAX_PACKETS
@@ -642,18 +668,21 @@ class Ftg:
                                 except KeyError:
                                     color_attr = None
                                 # record.msg = u'%s'%termcolor.colored(record.msg, color, on_color, color_attr)
+                                raw_msg = prettydate
                                 msg = termcolor.colored(
                                     prettydate, "white", "on_blue", ("bold",)
                                 )
                                 msgforsize = prettydate
                                 if "msg" in ids["_source"]:
                                     try:
+                                        raw_msg += " [-] " + emoji
                                         msg += emoji
                                         msgforsize += "  "
                                     except KeyError:
                                         pass
                                 else:
                                     try:
+                                        raw_msg += " [-] " + ("<%s>" % ids["_source"]["level_name"])
                                         msg += termcolor.colored(
                                             "<%s>" % ids["_source"]["level_name"],
                                             color,
@@ -667,6 +696,7 @@ class Ftg:
                                         pass
                                 try:
                                     host = ids["_source"]["host"]
+                                    raw_msg += " [-] [%s]" % host
                                     msg += termcolor.colored(
                                         "[%s]" % host, "blue", None, ("bold",)
                                     )
@@ -674,6 +704,10 @@ class Ftg:
                                 except Exception:
                                     host = "local"
                                 try:
+                                    raw_msg += " [-] %s [-] %s" % (
+                                        _id,
+                                        ids["_source"]["program"],
+                                    )
                                     msg += "(%s) %s >> " % (
                                         _id,
                                         ids["_source"]["program"],
@@ -683,6 +717,10 @@ class Ftg:
                                         ids["_source"]["program"],
                                     )
                                 except KeyError:
+                                    raw_msg += " [-] %s [-] %s" % (
+                                        _id,
+                                        ids["_source"]["context"]["user"],
+                                    )
                                     msg += "(%s) %s >> " % (
                                         _id,
                                         ids["_source"]["context"]["user"],
@@ -695,11 +733,13 @@ class Ftg:
                                     logmsg = logmsg.replace("\t", "  ")[
                                         : (tty_columns - len(msgforsize) - 1)
                                     ]
+                                raw_msg += " [-] %s" % logmsg
                                 msg += termcolor.colored(
                                     logmsg, color, on_color, color_attr
                                 )
 
                                 sys.stdout.write("\r")
+                                unformated_msgs.append(raw_msg)
                                 self.logger.log(lvl, msg)
 
                                 try:
@@ -813,6 +853,7 @@ def main():
     parser.add_argument(
         "--list", help="List indices", action="store_true", default=False
     )
+    parser.add_argument("--webserver", help="open a webserver", action="store_true", default=False)
     args = parser.parse_args()
 
     # Auto-update
@@ -931,12 +972,77 @@ Please move to OSX ☺️
 
     shell_event = threading.Event()
     shell = FtgShell(ftg, shell_event)
+
+    # Start webserver that will serve the logs
+    #
+    # (use env var because serious_python.dart
+    # is not able to pass args but can pass env vars)
+    if args.webserver or os.environ.get('webserver') == 'true':
+        start_webserver(ftg, shell)
+
     shell_thread = threading.Thread(target=shell.cmdloop)
     shell_thread.daemon = True
     shell_thread.start()
     ftg.set_shell_event(shell_event)
     ftg.loop(args.short, args.full)
 
+def stop_webserver():
+    global webserver
+    if webserver != None:
+            webserver.shutdown()
+
+def start_webserver(ftg: Ftg, shell: FtgShell):
+    global unformated_msgs
+    global command_output
+    global webserver
+    global WEBSERVER_MAX_LOGS
+    global WEBSERVER_PORT
+
+    app = Flask(__name__)
+
+    # show all the logs since last call (max 100 logs)
+    # and the status of the program
+    @app.route("/")
+    def ftg_output():
+        global unformated_msgs
+        global command_output
+        # to avoid too big responses, we only keep the last 100 logs
+        if (len(unformated_msgs) > WEBSERVER_MAX_LOGS):
+            unformated_msgs = unformated_msgs[-WEBSERVER_MAX_LOGS:]
+
+        # clear the list of logs since last call and return them
+        msgs = unformated_msgs.copy()
+        unformated_msgs.clear()
+        return json.dumps({
+            "status": ftg.get_debug(),
+            "command_output": command_output,
+            "logs_since_last_call": msgs
+        })
+
+    # run a command in the shell
+    @app.route("/command/<command>")
+    def ftg_run_command(command):
+        global command_output
+
+        if (command == 'stop' or command == 'exit' or command == 'q'):
+            ftg.shell_event.set()
+            stop_webserver()
+            sys.exit(0)
+        command_output.clear()
+        shell.onecmd(command)
+        output = ftg_output()
+        command_output.clear()
+        return output
+
+    def run():
+        global webserver
+
+        webserver = make_server('127.0.0.1', WEBSERVER_PORT, app)
+        webserver.serve_forever()
+
+    # start the webserver in a thread so it doesn't block the main thread 
+    flask_thread = threading.Thread(target=run)
+    flask_thread.start()
 
 if __name__ == "__main__":
     main()

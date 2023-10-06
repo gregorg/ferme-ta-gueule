@@ -20,11 +20,12 @@ packages = [
 ftg = "ferme-ta-gueule:main"
 
 [tool.poetry.dependencies]
-python = "^3.7.3"
+python = "^3.8.0"
 termcolor = "^1.1.0"
 elasticsearch = "^7.14.0"
 requests = "^2.31.0"
 setuptools = "^65.3.0"
+flask = "^3.0.0"
 
 [tool.poetry.dev-dependencies]
 pre-commit = "^2.13.0"
