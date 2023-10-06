@@ -74,7 +74,7 @@ webserver = None
 WEBSERVER_MAX_LOGS = 100
 WEBSERVER_PORT = 8000
 # Used to store unformated messages for webserver
-# unformatedMsg = "date [-] emoji [-] host [-] id [-] program [-] logmsg"
+# raw_msg = "date [-] emoji [-] host [-] id [-] program [-] logmsg"
 unformated_msgs = []
 # store last command output
 command_output = {}
@@ -117,14 +117,12 @@ class FtgShell(cmd.Cmd):
 
     def do_ls(self, arg):
         """list available indices"""
-        msg = "|--- index name ---|--- status ---|"
-        print(msg)
+        print("|--- index name ---|--- status ---|")
         for ind in self.ftg.list():
-            msg = "| {0[0]:^16} | {0[1]:^12} |".format(ind)
+            print("| {0[0]:^16} | {0[1]:^12} |".format(ind))
             if 'indexes' not in command_output:
                 command_output['indexes'] = []
             command_output['indexes'].append(ind[0])
-            print(msg)
 
     def do_index(self, arg):
         """set index"""
@@ -200,7 +198,6 @@ class FtgShell(cmd.Cmd):
         """exit"""
         stop_webserver()
         self.event.set()
-
         return True
 
     def do_pause(self, arg):
@@ -671,21 +668,21 @@ class Ftg:
                                 except KeyError:
                                     color_attr = None
                                 # record.msg = u'%s'%termcolor.colored(record.msg, color, on_color, color_attr)
-                                unformatedMsg = prettydate
+                                raw_msg = prettydate
                                 msg = termcolor.colored(
                                     prettydate, "white", "on_blue", ("bold",)
                                 )
                                 msgforsize = prettydate
                                 if "msg" in ids["_source"]:
                                     try:
-                                        unformatedMsg += " [-] " + emoji
+                                        raw_msg += " [-] " + emoji
                                         msg += emoji
                                         msgforsize += "  "
                                     except KeyError:
                                         pass
                                 else:
                                     try:
-                                        unformatedMsg += " [-] " + ("<%s>" % ids["_source"]["level_name"])
+                                        raw_msg += " [-] " + ("<%s>" % ids["_source"]["level_name"])
                                         msg += termcolor.colored(
                                             "<%s>" % ids["_source"]["level_name"],
                                             color,
@@ -699,7 +696,7 @@ class Ftg:
                                         pass
                                 try:
                                     host = ids["_source"]["host"]
-                                    unformatedMsg += " [-] [%s]" % host
+                                    raw_msg += " [-] [%s]" % host
                                     msg += termcolor.colored(
                                         "[%s]" % host, "blue", None, ("bold",)
                                     )
@@ -707,7 +704,7 @@ class Ftg:
                                 except Exception:
                                     host = "local"
                                 try:
-                                    unformatedMsg += " [-] %s [-] %s" % (
+                                    raw_msg += " [-] %s [-] %s" % (
                                         _id,
                                         ids["_source"]["program"],
                                     )
@@ -720,7 +717,7 @@ class Ftg:
                                         ids["_source"]["program"],
                                     )
                                 except KeyError:
-                                    unformatedMsg += " [-] %s [-] %s" % (
+                                    raw_msg += " [-] %s [-] %s" % (
                                         _id,
                                         ids["_source"]["context"]["user"],
                                     )
@@ -736,13 +733,13 @@ class Ftg:
                                     logmsg = logmsg.replace("\t", "  ")[
                                         : (tty_columns - len(msgforsize) - 1)
                                     ]
-                                unformatedMsg += " [-] %s" % logmsg
+                                raw_msg += " [-] %s" % logmsg
                                 msg += termcolor.colored(
                                     logmsg, color, on_color, color_attr
                                 )
 
                                 sys.stdout.write("\r")
-                                unformated_msgs.append(unformatedMsg)
+                                unformated_msgs.append(raw_msg)
                                 self.logger.log(lvl, msg)
 
                                 try:
